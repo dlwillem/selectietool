@@ -3,7 +3,7 @@
  * Traject-logica: aanmaken (met kopieer-wizard), status, huidige selectie.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 const TRAJECT_STATUSES = ['concept', 'actief', 'afgerond', 'gearchiveerd'];
 

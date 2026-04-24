@@ -1,15 +1,15 @@
 <?php
 /**
- * DKG SelectieTool V2 — globale configuratie
+ * Selectie Tool V2 — globale configuratie
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 // ─── Omgeving ─────────────────────────────────────────────────────────────────
 // Fail-safe default is 'production' — wie lokaal wil ontwikkelen zet expliciet
 // APP_ENV=development in .env. Zo lekken stacktraces nooit op een productie-host.
 define('APP_ENV',      env('APP_ENV', 'production'));
-define('APP_NAME',     env('APP_NAME', 'DKG SelectieTool'));
+define('APP_NAME',     env('APP_NAME', 'Selectie Tool'));
 define('APP_VERSION',  '2.0.0');
 define('APP_BASE_URL', rtrim(env('APP_BASE_URL', 'http://localhost:8888/st'), '/'));
 define('APP_ROOT',     dirname(__DIR__));
@@ -37,9 +37,9 @@ ini_set('session.gc_maxlifetime',     '7200');   // 2 uur
 if (APP_ENV === 'production') {
     ini_set('session.cookie_path',   '/');
     ini_set('session.cookie_domain', '');
-    session_name('__Host-DKGSID');
+    session_name('__Host-STSID');
 } else {
-    session_name('DKGSID');
+    session_name('STSID');
 }
 
 // ─── Tijdzone & locale ────────────────────────────────────────────────────────

@@ -4,7 +4,7 @@
  * Laadt config, DB, helpers en start de sessie.
  */
 
-define('DKG_BOOT', true);
+define('APP_BOOT', true);
 
 require_once __DIR__ . '/../config/env.php';
 require_once __DIR__ . '/../config/config.php';

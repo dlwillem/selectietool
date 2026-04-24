@@ -10,7 +10,7 @@
  * Kolomvolgorde is tevens het import-contract (zie structure_import.php).
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;

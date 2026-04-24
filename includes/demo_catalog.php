@@ -15,7 +15,7 @@
  * Score-methodiek blijft: avg per vraag → avg per blok → avg(blok1,2,4).
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 const DEMO_BLOCKS = [
     1 => ['title' => 'De demo zelf',  'subtitle' => 'Was dit een eerlijke, realistische demo?',          'in_total' => true,  'type' => 'score'],

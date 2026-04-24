@@ -3,7 +3,7 @@
  * Algemene helperfuncties — CSRF, sanitization, UUID, audit, mail-stub.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 // ─── Output escaping ──────────────────────────────────────────────────────────
 function h(?string $s): string {

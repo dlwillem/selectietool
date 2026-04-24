@@ -1,6 +1,6 @@
 <?php
 /**
- * DKG collega's (traject-deelnemers).
+ * Collega's (traject-deelnemers).
  *
  * Traject-brede lijst van beoordelaars (key-users, BA's, architecten, mgt).
  * Per collega wordt aangevinkt welke hoofdcategorieën (FUNC/NFR/VEND/LIC/SUP)
@@ -10,7 +10,7 @@
  * Dit expandeert de matrix naar scoring_deelnemers-rijen voor die ronde.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 const TD_SCOPES = ['FUNC', 'NFR', 'VEND', 'LIC', 'SUP'];
 

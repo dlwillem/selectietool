@@ -15,7 +15,7 @@
  * of als evidence_url niet leeg is.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 const LEV_ANSWER_MIN_TOELICHTING = 5;
 const LEV_SCORE_AUTO_MAX = 5;

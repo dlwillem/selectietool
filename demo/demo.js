@@ -1,5 +1,5 @@
 /**
- * Demo-video opname van de DKG SelectieTool.
+ * Demo-video opname van de Selectie Tool.
  *
  * Gebruik:
  *   cd demo

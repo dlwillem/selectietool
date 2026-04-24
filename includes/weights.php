@@ -8,7 +8,7 @@
  * per "groep" altijd 100 is.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 /**
  * Lees alle weights voor een traject.

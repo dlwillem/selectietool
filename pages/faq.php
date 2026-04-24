@@ -1,6 +1,6 @@
 <?php
 /**
- * FAQ — veelgestelde vragen over de DKG SelectieTool.
+ * FAQ — veelgestelde vragen over de Selectie Tool.
  */
 require_once __DIR__ . '/../includes/bootstrap.php';
 require_once __DIR__ . '/../includes/users.php';
@@ -12,12 +12,12 @@ $currentNav = 'faq';
 $faqGroups = [
     'Algemeen' => [
         [
-            'q' => 'Waar is de DKG SelectieTool voor bedoeld?',
-            'a' => 'De tool ondersteunt het volledige proces van softwareselectie bij DKG: van het vastleggen van requirements, via uitvraag bij leveranciers, tot automatisch en handmatig scoren en een eindrapportage met rangschikking.',
+            'q' => 'Waar is de Selectie Tool voor bedoeld?',
+            'a' => 'De tool ondersteunt het volledige proces van softwareselectie: van het vastleggen van requirements, via uitvraag bij leveranciers, tot automatisch en handmatig scoren en een eindrapportage met rangschikking.',
         ],
         [
             'q' => 'Voor wie is de tool?',
-            'a' => 'Interne DKG-rollen: architecten beheren de hele tool en alle trajecten, business owners stellen binnen hun eigen traject(en) requirements en leveranciers op en bepalen de weging, business analisten onderhouden requirements en scoren binnen toegewezen trajecten, en key-users krijgen read-only inzage plus de mogelijkheid om scores in te vullen. Leveranciers werken extern via een ingevuld Excel-bestand — zij hebben geen eigen login.',
+            'a' => 'Interne rollen: architecten beheren de hele tool en alle trajecten, business owners stellen binnen hun eigen traject(en) requirements en leveranciers op en bepalen de weging, business analisten onderhouden requirements en scoren binnen toegewezen trajecten, en key-users krijgen read-only inzage plus de mogelijkheid om scores in te vullen. Leveranciers werken extern via een ingevuld Excel-bestand — zij hebben geen eigen login.',
         ],
         [
             'q' => 'Welke rollen zijn er en wat mogen ze?',
@@ -189,7 +189,7 @@ Eindscore                         <strong style="color:#67e8f9;">3.67</strong>  
         ],
         [
             'q' => 'Hoe werkt het DEMO-aandeel?',
-            'a' => 'DEMO slaat op de <strong>demo die de leverancier bij DKG geeft</strong> (live presentatie / product-demo) — niet op een demo van de tool zelf. Per traject stel je een DEMO-weight in (percentage). De eindscore is dan een gewogen combinatie: (100 − DEMO%) voor de requirement-scores en DEMO% voor de beoordeling van de leveranciers-demo. Standaard staat DEMO op 0, zodat het pas meeweegt als je bewust een percentage kiest.',
+            'a' => 'DEMO slaat op de <strong>demo die de leverancier geeft</strong> (live presentatie / product-demo) — niet op een demo van de tool zelf. Per traject stel je een DEMO-weight in (percentage). De eindscore is dan een gewogen combinatie: (100 − DEMO%) voor de requirement-scores en DEMO% voor de beoordeling van de leveranciers-demo. Standaard staat DEMO op 0, zodat het pas meeweegt als je bewust een percentage kiest.',
         ],
         [
             'q' => 'Welke scores worden meegenomen in de rapportage?',
@@ -241,7 +241,7 @@ Eindscore                         <strong style="color:#67e8f9;">3.67</strong>  
         ],
         [
             'q' => 'Is de broncode door AI geschreven?',
-            'a' => 'Ja, de applicatie is ontwikkeld in nauwe samenwerking met <strong>Claude AI (Anthropic)</strong>. Ontwerpbeslissingen en requirements komen van het DKG-team; implementatie, iteratie en refactoring gebeurden pair-programming-stijl met Claude.',
+            'a' => 'Ja, de applicatie is ontwikkeld in nauwe samenwerking met <strong>Claude AI (Anthropic)</strong>. Ontwerpbeslissingen en requirements komen van het team; implementatie, iteratie en refactoring gebeurden pair-programming-stijl met Claude.',
         ],
     ],
 ];

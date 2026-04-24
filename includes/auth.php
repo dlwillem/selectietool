@@ -5,7 +5,7 @@
  * er nu al van afhankelijk kunnen zijn.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 function session_boot(): void {
     if (session_status() === PHP_SESSION_ACTIVE) return;

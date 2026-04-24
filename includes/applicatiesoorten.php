@@ -7,7 +7,7 @@
  * tussenlaag — hun templates staan direct in `subcategorie_templates`.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 function applicatiesoort_create(string $label, ?string $description = null, int $sortOrder = 0): int {
     $label = trim($label);

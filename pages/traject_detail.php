@@ -243,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash_set('success', sprintf('Uitnodigingen verzonden: %d nieuw, %d al uitgenodigd.',
                 $res['invited'], $res['skipped']));
 
-        // ─── DKG collega's (traject-deelnemers) ─────────────────────────────
+        // ─── Collega's (traject-deelnemers) ─────────────────────────────
         } elseif ($action === 'collega_add') {
             $uid = input_int('user_id');
             $u   = $uid ? db_one('SELECT name, email FROM users WHERE id = :id AND active = 1', [':id' => $uid]) : null;
@@ -553,13 +553,13 @@ function render_tab_collegas(array $collegas, bool $canEdit, int $trajectId, arr
     <div class="card-title">
       <h2 style="display:flex;align-items:center;gap:8px;">
         <span style="color:var(--blue-600);display:inline-flex;"><?= icon('users', 16) ?></span>
-        DKG collega's
+        Collega's
         <span class="badge blue"><?= count($collegas) ?></span>
       </h2>
       <span class="muted small">Beoordelaars die bij dit traject betrokken zijn</span>
     </div>
     <p class="muted small" style="margin-top:0;">
-      Koppel hier bestaande DKG-gebruikers aan dit traject — key-users, business analisten, architecten, business owners.
+      Koppel hier bestaande gebruikers aan dit traject — key-users, business analisten, architecten, business owners.
       Per collega bepaal je welke hoofdcategorieën zij standaard scoren.
       Bij het openen van een ronde krijgen de aangevinkte collega's een persoonlijke token-link per e-mail.
       Nieuwe gebruikers voeg je eerst toe via <a href="<?= h(APP_BASE_URL) ?>/pages/instellingen.php">Instellingen</a>.
@@ -1305,7 +1305,7 @@ function render_scoring_drilldown(
           <p class="muted small" style="margin:0;">
             Nog geen collega's in dit traject.
             <a href="<?= h(APP_BASE_URL) ?>/pages/traject_detail.php?id=<?= (int)$trajectId ?>&tab=collegas">
-              Voeg eerst DKG-collega's toe →
+              Voeg eerst collega's toe →
             </a>
           </p>
         <?php elseif ($scope === 'DEMO'): ?>

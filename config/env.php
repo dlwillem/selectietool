@@ -9,7 +9,7 @@
  * minimaal geblokkeerd via .htaccess (zie root .htaccess, FilesMatch).
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 (function () {
     $path = dirname(__DIR__) . '/.env';

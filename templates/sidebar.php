@@ -3,7 +3,7 @@
  * Zijbalk met logo, navigatie en profiel-dropdown (omhoog).
  * Vereist: $currentNav (string key).
  */
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 $currentNav = $currentNav ?? '';
 $user       = current_user();

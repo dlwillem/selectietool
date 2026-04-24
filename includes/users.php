@@ -9,7 +9,7 @@
  * Permissies worden beheerd via includes/authz.php (can()).
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 const USER_ROLES = ['architect', 'business_owner', 'business_analist', 'key_user'];
 

@@ -7,10 +7,10 @@
  * Na Fase 5 (install-wizard) neemt die stap het expliciet over.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 const SETTING_DEFAULTS = [
-    'app_name'       => 'DKG SelectieTool',
+    'app_name'       => 'Selectie Tool',
     'company_name'   => '',
     'logo_path'      => '',
     // Mail — wordt in Fase 2 via de UI ingevuld.
@@ -68,7 +68,7 @@ function setting_set(string $key, string $value): void {
 
 function setting_app_name(): string {
     $n = setting_get('app_name');
-    return $n !== '' ? $n : 'DKG SelectieTool';
+    return $n !== '' ? $n : 'Selectie Tool';
 }
 
 function setting_logo_url(): string {

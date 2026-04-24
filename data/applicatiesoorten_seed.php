@@ -74,7 +74,7 @@ Het omvat onder andere Voice of Customer (VoC)-functionaliteit, contentcreatie e
   ],
   [
     "code" => 'L-6',
-    "label" => 'L-6 DKG specifiek',
+    "label" => 'L-6 Organisatie-specifiek',
     "description" => null,
     "subs" => [
       ["code" => 'L-6.1', "name" => 'L-6.1 Projectuitvoering'],
@@ -304,7 +304,7 @@ Deze tooling helpt organisaties om strategie en IT te aligneren, complexiteit te
     "description" => null,
     "subs" => [
       ["code" => 'MOL-1.1', "name" => 'MOL-1.1 Betaalafhandeling'],
-      ["code" => 'MOL-1.2', "name" => 'MOL-1.2 Accountbeheer (DKG account bij Mollie)'],
+      ["code" => 'MOL-1.2', "name" => 'MOL-1.2 Accountbeheer (eigen account bij Mollie)'],
     ],
   ],
   [

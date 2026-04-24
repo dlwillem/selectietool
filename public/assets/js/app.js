@@ -1,12 +1,12 @@
-/* DKG SelectieTool V2 — client helpers (placeholder). */
+/* Selectie Tool V2 — client helpers (placeholder). */
 
 (function () {
   'use strict';
 
   // CSRF-token opnemen in elke AJAX POST
   const meta = document.querySelector('meta[name="csrf-token"]');
-  window.DKG = window.DKG || {};
-  window.DKG.csrfToken = meta ? meta.content : '';
+  window.APP = window.APP || {};
+  window.APP.csrfToken = meta ? meta.content : '';
 
   // Klikbare tabelrijen: <tr class="row-link" data-href="/url">…</tr>
   // Cellen met [data-no-rowlink] zijn uitgesloten, net als interactieve elementen.
@@ -24,13 +24,13 @@
     }
   });
 
-  window.DKG.postJSON = function (url, data) {
+  window.APP.postJSON = function (url, data) {
     return fetch(url, {
       method: 'POST',
       credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-Token': window.DKG.csrfToken,
+        'X-CSRF-Token': window.APP.csrfToken,
         'X-Requested-With': 'XMLHttpRequest',
       },
       body: JSON.stringify(data || {}),

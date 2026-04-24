@@ -79,7 +79,7 @@ $bodyRenderer = function () use (
   <!-- Sectie 1: greeting -->
   <div class="hp-greet">
     <h1 class="hp-greet-title"><?= h($greet) ?>, <?= h($firstName) ?> 👋</h1>
-    <div class="hp-greet-sub">Overzicht van jouw selectietrajecten bij DKG</div>
+    <div class="hp-greet-sub">Overzicht van jouw selectietrajecten</div>
   </div>
 
   <!-- Sectie 2: dark hero -->
@@ -88,7 +88,7 @@ $bodyRenderer = function () use (
     <div class="hp-hero-deco hp-hero-deco-br"></div>
 
     <div class="hp-hero-left">
-      <div class="hp-hero-pill">DKG SELECTIETOOL v2.0</div>
+      <div class="hp-hero-pill">SELECTIE TOOL v2.0</div>
       <h2 class="hp-hero-title">
         Van requirements tot eindrapportage —<br>
         één plek voor elk softwareselectie-traject.

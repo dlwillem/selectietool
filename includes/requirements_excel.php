@@ -7,7 +7,7 @@
  * Import : idempotent, strict, transactioneel. Zie requirements_excel_import().
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 require_once __DIR__ . '/requirements.php';
 
@@ -31,7 +31,7 @@ const REQ_EXCEL_COLUMNS = [
 /**
  * Download .xlsx met alle requirements van dit traject.
  *
- * Gestileerd in dezelfde DKG-huisstijl als de leverancier-export: één tabblad
+ * Gestileerd in dezelfde huisstijl als de leverancier-export: één tabblad
  * per hoofdcategorie (FUNC/NFR/VEND/LIC/SUP) met een roze banner en kolommen
  * Nr, Domein, Titel, Omschrijving, MoSCoW. Géén antwoord-kolommen en géén
  * instructies-tab (dit bestand is voor intern gebruik).
@@ -69,11 +69,11 @@ function requirements_excel_export(int $trajectId, string $filename): void {
 
     $scopes = ['FUNC', 'NFR', 'VEND', 'LIC', 'SUP'];
     $titles = [
-        'FUNC' => 'DKG Functional Requirements',
-        'NFR'  => 'DKG Non Functional Requirements',
-        'VEND' => 'DKG Vendor Requirements',
-        'LIC'  => 'DKG Licence Requirements',
-        'SUP'  => 'DKG Support Requirements',
+        'FUNC' => 'Functional Requirements',
+        'NFR'  => 'Non Functional Requirements',
+        'VEND' => 'Vendor Requirements',
+        'LIC'  => 'Licence Requirements',
+        'SUP'  => 'Support Requirements',
     ];
     $moscow = ['eis' => 'Must', 'wens' => 'Should', 'ko' => 'Knock-out'];
 

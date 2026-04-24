@@ -1,4 +1,4 @@
-/* DKG SelectieTool — interactieve weight-sliders met proportionele
+/* Selectie Tool — interactieve weight-sliders met proportionele
    herverdeling. Binnen elke groep (data-weight-group) wordt de som op 100
    gehouden: als slider X verandert, schalen de overige sliders mee.
 */

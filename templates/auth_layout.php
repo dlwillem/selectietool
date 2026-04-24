@@ -3,7 +3,7 @@
  * Layout voor auth-pagina's (login, wachtwoord reset).
  * Vereist: $pageTitle, $bodyRenderer.
  */
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 $flashes = flash_pull();
 ?><!doctype html>
 <html lang="nl">

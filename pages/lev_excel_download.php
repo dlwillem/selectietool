@@ -25,7 +25,7 @@ if (!can_edit_traject('leveranciers.edit', (int)$lev['traject_id'])) {
 
 $safe = preg_replace('/[^A-Za-z0-9._-]+/', '_',
     $lev['traject_name'] . '_' . $lev['name']);
-$filename = 'DKG_requirements_' . $safe . '.xlsx';
+$filename = 'requirements_' . $safe . '.xlsx';
 
 audit_log('leverancier_excel_downloaded', 'leverancier', $leverancierId, $filename);
 

@@ -3,7 +3,7 @@
  * Database helper functions — dunne wrappers rond PDO.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 function db_all(string $sql, array $params = []): array {
     $stmt = db()->prepare($sql);

@@ -121,9 +121,9 @@ $renderShell = function (int $pctFilled, int $nFilled, int $nTotal) use ($d, $st
       <div class="sc-hero-inner">
         <div class="sc-hero-top">
           <div class="sc-brand">
-            <div class="sc-logo">DKG</div>
+            <div class="sc-logo">ST</div>
             <div>
-              <div class="sc-brand-name">DKG SelectieTool</div>
+              <div class="sc-brand-name">Selectie Tool</div>
               <div class="sc-brand-sub">Softwareselectie platform</div>
             </div>
           </div>

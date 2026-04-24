@@ -11,7 +11,7 @@
  * ook een token-link (geen login vereist op /pages/score.php).
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 const RONDE_STATUSES = ['concept', 'open', 'gesloten'];
 const RONDE_SCOPES   = ['FUNC', 'NFR', 'VEND', 'LIC', 'SUP', 'DEMO'];

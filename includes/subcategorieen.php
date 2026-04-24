@@ -6,7 +6,7 @@
  * gelijkmatig herverdeeld.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 function subcat_find(int $subId, int $trajectId): ?array {
     $row = db_one(

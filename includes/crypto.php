@@ -5,7 +5,7 @@
  * gebruik als het .env-bestand schrijfbaar is.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 function app_key_get(): ?string {
     static $cached = null;

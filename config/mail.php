@@ -9,7 +9,7 @@
  * dit bestand levert de bootstrap-defaults voor vóór-install situaties.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 define('MAIL_DRIVER',    env('MAIL_DRIVER',    'log'));           // 'log' | 'smtp'
 define('MAIL_FROM',      env('MAIL_FROM',      'noreply@localhost'));

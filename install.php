@@ -17,7 +17,7 @@
  * beschikbaar zijn. Na DB-stap wordt een verse PDO opgebouwd.
  */
 
-define('DKG_BOOT', true);
+define('APP_BOOT', true);
 require_once __DIR__ . '/config/env.php';
 require_once __DIR__ . '/config/config.php';
 
@@ -303,7 +303,7 @@ function wiz_render(int $step): string {
             <?php break;
         case 4: ?>
             <h2>4 · Branding</h2>
-            <label>App-naam <input name="app_name" value="DKG SelectieTool" required maxlength="100"></label>
+            <label>App-naam <input name="app_name" value="Selectie Tool" required maxlength="100"></label>
             <label>Bedrijfsnaam <span class="muted">(optioneel)</span> <input name="company_name" maxlength="100"></label>
             <p class="muted small">Logo kun je later uploaden via Instellingen → Branding.</p>
             <button class="btn">Opslaan →</button>
@@ -317,7 +317,7 @@ function wiz_render(int $step): string {
                 <option value="smtp">SMTP</option>
               </select>
             </label>
-            <label>Afzender-naam <input name="mail_from_name" value="DKG SelectieTool" maxlength="100"></label>
+            <label>Afzender-naam <input name="mail_from_name" value="Selectie Tool" maxlength="100"></label>
             <label>Afzender-e-mail <input type="email" name="mail_from" maxlength="190"></label>
             <div id="smtp" style="display:none;">
               <label>SMTP-host <input name="smtp_host" maxlength="190"></label>
@@ -400,7 +400,7 @@ function wiz_layout(string $title, string $body): string {
     .wiz-steps li.done span { background:#16a34a; color:#fff; }
   </style>
 </head>
-<body><div class="wrap"><h1>DKG SelectieTool — Installatie</h1>$body</div></body>
+<body><div class="wrap"><h1>Selectie Tool — Installatie</h1>$body</div></body>
 </html>
 HTML;
 }

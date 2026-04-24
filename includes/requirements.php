@@ -8,7 +8,7 @@
  * Type: 'eis' | 'wens' | 'ko' (knock-out).
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 const REQUIREMENT_TYPES = ['eis', 'wens', 'ko'];
 

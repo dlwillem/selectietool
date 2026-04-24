@@ -3,7 +3,7 @@
  * Excel-export + import voor leverancier-antwoorden per requirement.
  *
  * Export: één .xlsx per leverancier, één tab per hoofdcategorie
- * (FUNC/NFR/VEND/LIC/SUP). Layout conform DKG-huisstijl: pink banner
+ * (FUNC/NFR/VEND/LIC/SUP). Layout conform huisstijl: pink banner
  * links (traject-info), groene banner rechts (in te vullen door leverancier).
  *
  * Kolommen: code, domein (hoofdcat/subcat), titel, omschrijving, MoSCoW,
@@ -16,7 +16,7 @@
  *         Legacy waarden (volledig/deels/niet/nvt) blijven werken.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
@@ -33,11 +33,11 @@ const LEV_EXCEL_LANGS    = ['nl', 'en'];
 const LEV_EXCEL_I18N = [
     'nl' => [
         'scope_titles' => [
-            'FUNC' => 'DKG Functional Requirements',
-            'NFR'  => 'DKG Non Functional Requirements',
-            'VEND' => 'DKG Vendor Requirements',
-            'LIC'  => 'DKG Licence Requirements',
-            'SUP'  => 'DKG Support Requirements',
+            'FUNC' => 'Functional Requirements',
+            'NFR'  => 'Non Functional Requirements',
+            'VEND' => 'Vendor Requirements',
+            'LIC'  => 'Licence Requirements',
+            'SUP'  => 'Support Requirements',
         ],
         'headers' => [
             'nr'           => 'Nr',
@@ -95,11 +95,11 @@ const LEV_EXCEL_I18N = [
     ],
     'en' => [
         'scope_titles' => [
-            'FUNC' => 'DKG Functional Requirements',
-            'NFR'  => 'DKG Non Functional Requirements',
-            'VEND' => 'DKG Vendor Requirements',
-            'LIC'  => 'DKG Licence Requirements',
-            'SUP'  => 'DKG Support Requirements',
+            'FUNC' => 'Functional Requirements',
+            'NFR'  => 'Non Functional Requirements',
+            'VEND' => 'Vendor Requirements',
+            'LIC'  => 'Licence Requirements',
+            'SUP'  => 'Support Requirements',
         ],
         'headers' => [
             'nr'           => 'No.',

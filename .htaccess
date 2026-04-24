@@ -1,4 +1,4 @@
-# DKG SelectieTool V2 — root .htaccess
+# Selectie Tool V2 — root .htaccess
 
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"

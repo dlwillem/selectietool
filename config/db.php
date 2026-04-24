@@ -3,7 +3,7 @@
  * Database-verbinding (PDO, strict mode, prepared statements only)
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 // Credentials worden uit .env gelezen — dit bestand bevat géén secrets meer.
 // Voor lokale MAMP-dev staan defaults; zet in .env alle waarden om op productie.

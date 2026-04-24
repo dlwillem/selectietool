@@ -7,7 +7,7 @@
  * De autorisatiematrix in de FAQ wordt auto-gegenereerd uit deze map.
  */
 
-if (!defined('DKG_BOOT')) { http_response_code(403); exit('Forbidden'); }
+if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 /**
  * Capabilities met een user-vriendelijk label. Het label wordt gebruikt
