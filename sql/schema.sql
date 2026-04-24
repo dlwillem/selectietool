@@ -3,12 +3,11 @@
 SET FOREIGN_KEY_CHECKS=0;
 CREATE TABLE `applicatiesoorten` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `code` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
   `label` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
   `sort_order` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_app_code` (`code`)
+  UNIQUE KEY `uq_app_label` (`label`)
 ) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

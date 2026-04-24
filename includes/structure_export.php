@@ -19,8 +19,8 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 const STRUCT_SHEETS = [
     'Categorieen'      => ['code', 'name', 'type', 'sort_order'],
-    'Applicatiesoorten'=> ['code', 'label', 'description', 'sort_order'],
-    'Subcategorieen'   => ['categorie_code', 'applicatiesoort_code', 'name', 'sort_order'],
+    'Applicatiesoorten'=> ['label', 'description', 'sort_order'],
+    'Subcategorieen'   => ['categorie_code', 'applicatiesoort_label', 'name', 'sort_order'],
     'DEMO-vragen'      => ['block', 'sort_order', 'text'],
 ];
 
@@ -37,8 +37,8 @@ function structure_export_xlsx(string $mode, string $filename): void {
         ['Vul onderstaande tabbladen. Kolomvolgorde en -namen niet wijzigen.'],
         [''],
         ['Categorieen       — code (uniek), name, type (functional/non_functional/other), sort_order'],
-        ['Applicatiesoorten — code (uniek), label, description, sort_order'],
-        ['Subcategorieen    — categorie_code (verwijst naar Categorieen), applicatiesoort_code (optioneel), name, sort_order'],
+        ['Applicatiesoorten — label (uniek), description, sort_order'],
+        ['Subcategorieen    — categorie_code (verwijst naar Categorieen), applicatiesoort_label (optioneel, verwijst naar Applicatiesoorten), name, sort_order'],
         ['DEMO-vragen       — block (1..n), sort_order, text'],
         [''],
         ['Import overschrijft de huidige structuur niet; upload alleen op een lege structuur.'],
@@ -75,9 +75,9 @@ function structure_export_xlsx(string $mode, string $filename): void {
 
 function _struct_fill_current(Spreadsheet $ss): void {
     $cats = db_all('SELECT code, name, type, sort_order FROM categorieen ORDER BY sort_order, id');
-    $apps = db_all('SELECT code, label, description, sort_order FROM applicatiesoorten ORDER BY sort_order, id');
+    $apps = db_all('SELECT label, description, sort_order FROM applicatiesoorten ORDER BY sort_order, id');
     $subs = db_all(
-        'SELECT c.code AS categorie_code, a.code AS applicatiesoort_code, t.name, t.sort_order
+        'SELECT c.code AS categorie_code, a.label AS applicatiesoort_label, t.name, t.sort_order
            FROM subcategorie_templates t
            JOIN categorieen c ON c.id = t.categorie_id
            LEFT JOIN applicatiesoorten a ON a.id = t.applicatiesoort_id
@@ -86,8 +86,8 @@ function _struct_fill_current(Spreadsheet $ss): void {
     $demo = db_all('SELECT block, sort_order, text FROM demo_question_catalog WHERE active = 1 ORDER BY block, sort_order, id');
 
     _struct_write_rows($ss->getSheetByName('Categorieen'),       $cats, ['code','name','type','sort_order']);
-    _struct_write_rows($ss->getSheetByName('Applicatiesoorten'), $apps, ['code','label','description','sort_order']);
-    _struct_write_rows($ss->getSheetByName('Subcategorieen'),    $subs, ['categorie_code','applicatiesoort_code','name','sort_order']);
+    _struct_write_rows($ss->getSheetByName('Applicatiesoorten'), $apps, ['label','description','sort_order']);
+    _struct_write_rows($ss->getSheetByName('Subcategorieen'),    $subs, ['categorie_code','applicatiesoort_label','name','sort_order']);
     _struct_write_rows($ss->getSheetByName('DEMO-vragen'),       $demo, ['block','sort_order','text']);
 }
 

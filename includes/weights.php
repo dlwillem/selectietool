@@ -151,7 +151,7 @@ function structure_load(int $trajectId): array {
     );
     $subs = db_all(
         'SELECT s.id, s.categorie_id, s.traject_id, s.applicatiesoort_id, s.name, s.sort_order,
-                a.code AS app_code, a.label AS app_label
+                a.label AS app_label
            FROM subcategorieen s
            LEFT JOIN applicatiesoorten a ON a.id = s.applicatiesoort_id
           WHERE s.traject_id = :t

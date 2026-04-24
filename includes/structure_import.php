@@ -41,8 +41,8 @@ function structure_import_xlsx(string $tmpPath): array {
     }
 
     $cats = _struct_read_sheet($ss->getSheetByName('Categorieen'),       ['code','name','type','sort_order']);
-    $apps = _struct_read_sheet($ss->getSheetByName('Applicatiesoorten'), ['code','label','description','sort_order']);
-    $subs = _struct_read_sheet($ss->getSheetByName('Subcategorieen'),    ['categorie_code','applicatiesoort_code','name','sort_order']);
+    $apps = _struct_read_sheet($ss->getSheetByName('Applicatiesoorten'), ['label','description','sort_order']);
+    $subs = _struct_read_sheet($ss->getSheetByName('Subcategorieen'),    ['categorie_code','applicatiesoort_label','name','sort_order']);
     $demo = _struct_read_sheet($ss->getSheetByName('DEMO-vragen'),       ['block','sort_order','text']);
 
     $validTypes = ['functional','non_functional','other'];
@@ -63,22 +63,21 @@ function structure_import_xlsx(string $tmpPath): array {
         $catByCode[$code] = true;
     }
 
-    $appByCode = [];
+    $appByLabel = [];
     foreach ($apps as $i => $r) {
-        $code  = trim((string)$r['code']);
         $label = trim((string)$r['label']);
-        if ($code === '' || $label === '') {
-            throw new RuntimeException('Applicatiesoorten rij ' . ($i + 2) . ': code en label zijn verplicht.');
+        if ($label === '') {
+            throw new RuntimeException('Applicatiesoorten rij ' . ($i + 2) . ': label is verplicht.');
         }
-        if (isset($appByCode[$code])) {
-            throw new RuntimeException("Applicatiesoorten: dubbele code '$code'.");
+        if (isset($appByLabel[$label])) {
+            throw new RuntimeException("Applicatiesoorten: dubbel label '$label'.");
         }
-        $appByCode[$code] = true;
+        $appByLabel[$label] = true;
     }
 
     foreach ($subs as $i => $r) {
         $cc = trim((string)$r['categorie_code']);
-        $ac = trim((string)$r['applicatiesoort_code']);
+        $al = trim((string)$r['applicatiesoort_label']);
         $nm = trim((string)$r['name']);
         if ($cc === '' || $nm === '') {
             throw new RuntimeException('Subcategorieen rij ' . ($i + 2) . ': categorie_code en name zijn verplicht.');
@@ -86,8 +85,8 @@ function structure_import_xlsx(string $tmpPath): array {
         if (!isset($catByCode[$cc])) {
             throw new RuntimeException("Subcategorieen rij " . ($i + 2) . ": onbekende categorie_code '$cc'.");
         }
-        if ($ac !== '' && !isset($appByCode[$ac])) {
-            throw new RuntimeException("Subcategorieen rij " . ($i + 2) . ": onbekende applicatiesoort_code '$ac'.");
+        if ($al !== '' && !isset($appByLabel[$al])) {
+            throw new RuntimeException("Subcategorieen rij " . ($i + 2) . ": onbekend applicatiesoort_label '$al'.");
         }
     }
 
@@ -119,15 +118,15 @@ function structure_import_xlsx(string $tmpPath): array {
         }
 
         $appIds = [];
-        $st = $pdo->prepare('INSERT INTO applicatiesoorten (code, label, description, sort_order) VALUES (:c,:l,:d,:o)');
+        $st = $pdo->prepare('INSERT INTO applicatiesoorten (label, description, sort_order) VALUES (:l,:d,:o)');
         foreach ($apps as $i => $r) {
+            $label = trim((string)$r['label']);
             $st->execute([
-                ':c' => trim((string)$r['code']),
-                ':l' => trim((string)$r['label']),
+                ':l' => $label,
                 ':d' => trim((string)($r['description'] ?? '')),
                 ':o' => (int)($r['sort_order'] ?? ($i + 1)),
             ]);
-            $appIds[trim((string)$r['code'])] = (int)$pdo->lastInsertId();
+            $appIds[$label] = (int)$pdo->lastInsertId();
         }
 
         $st = $pdo->prepare(
@@ -135,10 +134,10 @@ function structure_import_xlsx(string $tmpPath): array {
              VALUES (:c,:a,:n,:o)'
         );
         foreach ($subs as $i => $r) {
-            $ac = trim((string)$r['applicatiesoort_code']);
+            $al = trim((string)$r['applicatiesoort_label']);
             $st->execute([
                 ':c' => $catIds[trim((string)$r['categorie_code'])],
-                ':a' => $ac !== '' ? $appIds[$ac] : null,
+                ':a' => $al !== '' ? $appIds[$al] : null,
                 ':n' => trim((string)$r['name']),
                 ':o' => (int)($r['sort_order'] ?? ($i + 1)),
             ]);
