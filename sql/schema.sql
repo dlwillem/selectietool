@@ -1,5 +1,6 @@
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
+SET FOREIGN_KEY_CHECKS=0;
 CREATE TABLE `applicatiesoorten` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `code` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -429,3 +430,4 @@ CREATE TABLE `weights` (
   CONSTRAINT `fk_w_traject` FOREIGN KEY (`traject_id`) REFERENCES `trajecten` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=260 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+SET FOREIGN_KEY_CHECKS=1;
