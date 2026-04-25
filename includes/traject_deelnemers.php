@@ -3,7 +3,7 @@
  * Collega's (traject-deelnemers).
  *
  * Traject-brede lijst van beoordelaars (key-users, BA's, architecten, mgt).
- * Per collega wordt aangevinkt welke hoofdcategorieën (FUNC/NFR/VEND/LIC/SUP)
+ * Per collega wordt aangevinkt welke hoofdcategorieën (FUNC/NFR/VEND/IMPL/SUP/LIC)
  * zij standaard scoren. DEMO wordt per ronde bepaald (niet via de matrix).
  *
  * Bij het openen van een ronde klikt een key-user "Uitnodigingen versturen".
@@ -12,7 +12,7 @@
 
 if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
-const TD_SCOPES = ['FUNC', 'NFR', 'VEND', 'LIC', 'SUP'];
+const TD_SCOPES = ['FUNC', 'NFR', 'VEND', 'IMPL', 'SUP', 'LIC'];
 
 /**
  * Lijst collega's voor een traject, inclusief scope-vinkjes.
@@ -111,7 +111,7 @@ function traject_deelnemer_scopes_set(int $tdId, array $scopes): void {
 }
 
 /**
- * Collega's die voor een bepaalde scope zijn aangevinkt (voor FUNC/NFR/VEND/LIC/SUP).
+ * Collega's die voor een bepaalde scope zijn aangevinkt (voor FUNC/NFR/VEND/IMPL/SUP/LIC).
  * Voor DEMO: geef alle collega's terug (selectie gebeurt per ronde).
  *
  * @return array<int,array{id:int,name:string,email:string}>

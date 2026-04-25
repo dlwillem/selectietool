@@ -477,7 +477,8 @@ $bodyRenderer = function () use ($traject, $allTrajecten, $trajectId, $ranking, 
   <?php
     $catBarColors = [
       'FUNC' => '#3b82f6', 'NFR' => '#f59e0b', 'VEND' => '#10b981',
-      'LIC'  => '#ef4444', 'SUP' => '#8b5cf6', 'DEMO' => '#ec4899',
+      'IMPL' => '#06b6d4', 'SUP'  => '#8b5cf6', 'LIC'  => '#ef4444',
+      'DEMO' => '#ec4899',
     ];
     $demoAandeel = (float)($traject['demo_weight_pct'] ?? 0);
   ?>

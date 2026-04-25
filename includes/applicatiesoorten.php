@@ -3,58 +3,59 @@
  * Applicatiesoorten — repository-groep voor FUNC subcat-templates.
  * Een applicatiesoort (bv. "L-17 HRM — Human Resource Management") groepeert
  * één of meer FUNC subcategorie-templates die samen gekopieerd worden bij
- * het aanmaken van een traject. NFR/VEND/LIC/SUP werken zonder deze
+ * het aanmaken van een traject. NFR/VEND/LIC/SUP/IMPL werken zonder deze
  * tussenlaag — hun templates staan direct in `subcategorie_templates`.
  */
 
 if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
-function applicatiesoort_create(string $label, ?string $description = null, int $sortOrder = 0): int {
-    $label = trim($label);
-    if ($label === '') {
-        throw new RuntimeException('Label is verplicht.');
+function applicatiesoort_create(string $name, ?string $description = null, ?string $bron = null): int {
+    $name = trim($name);
+    if ($name === '') {
+        throw new RuntimeException('Naam is verplicht.');
     }
-    if (mb_strlen($label) > 200) {
-        throw new RuntimeException('Label te lang (max 200 tekens).');
+    if (mb_strlen($name) > 200) {
+        throw new RuntimeException('Naam te lang (max 200 tekens).');
     }
-    $exists = db_value('SELECT id FROM applicatiesoorten WHERE label = :l', [':l' => $label]);
+    $exists = db_value('SELECT id FROM applicatiesoorten WHERE name = :n', [':n' => $name]);
     if ($exists) {
-        throw new RuntimeException("Applicatiesoort met label '$label' bestaat al.");
+        throw new RuntimeException("Applicatiesoort met naam '$name' bestaat al.");
     }
     $id = db_insert('applicatiesoorten', [
-        'label'       => $label,
+        'name'        => $name,
         'description' => ($description !== null && $description !== '') ? $description : null,
-        'sort_order'  => $sortOrder,
+        'bron'        => ($bron !== null && $bron !== '') ? $bron : null,
+        'sort_order'  => 0,
     ]);
-    audit_log('applicatiesoort_created', 'applicatiesoort', $id, $label);
+    audit_log('applicatiesoort_created', 'applicatiesoort', $id, $name);
     return $id;
 }
 
-function applicatiesoort_update(int $id, string $label, ?string $description, int $sortOrder): void {
-    $label = trim($label);
-    if ($label === '') {
-        throw new RuntimeException('Label is verplicht.');
+function applicatiesoort_update(int $id, string $name, ?string $description, ?string $bron): void {
+    $name = trim($name);
+    if ($name === '') {
+        throw new RuntimeException('Naam is verplicht.');
     }
-    if (mb_strlen($label) > 200) {
-        throw new RuntimeException('Label te lang (max 200 tekens).');
+    if (mb_strlen($name) > 200) {
+        throw new RuntimeException('Naam te lang (max 200 tekens).');
     }
     $current = db_one('SELECT id FROM applicatiesoorten WHERE id = :id', [':id' => $id]);
     if (!$current) {
         throw new RuntimeException('Applicatiesoort niet gevonden.');
     }
     $clash = db_value(
-        'SELECT id FROM applicatiesoorten WHERE label = :l AND id <> :id',
-        [':l' => $label, ':id' => $id]
+        'SELECT id FROM applicatiesoorten WHERE name = :n AND id <> :id',
+        [':n' => $name, ':id' => $id]
     );
     if ($clash) {
-        throw new RuntimeException("Ander applicatiesoort heeft dit label al: '$label'.");
+        throw new RuntimeException("Andere applicatiesoort heeft deze naam al: '$name'.");
     }
     db_update('applicatiesoorten', [
-        'label'       => $label,
+        'name'        => $name,
         'description' => ($description !== null && $description !== '') ? $description : null,
-        'sort_order'  => $sortOrder,
+        'bron'        => ($bron !== null && $bron !== '') ? $bron : null,
     ], 'id = :id', [':id' => $id]);
-    audit_log('applicatiesoort_updated', 'applicatiesoort', $id, $label);
+    audit_log('applicatiesoort_updated', 'applicatiesoort', $id, $name);
 }
 
 /**
@@ -73,7 +74,7 @@ function applicatiesoort_usage(int $id): array {
 }
 
 function applicatiesoort_delete(int $id): void {
-    $row = db_one('SELECT id, label FROM applicatiesoorten WHERE id = :id', [':id' => $id]);
+    $row = db_one('SELECT id, name FROM applicatiesoorten WHERE id = :id', [':id' => $id]);
     if (!$row) {
         throw new RuntimeException('Applicatiesoort niet gevonden.');
     }
@@ -82,23 +83,24 @@ function applicatiesoort_delete(int $id): void {
         throw new RuntimeException(sprintf(
             "Kan '%s' niet verwijderen: nog %d app-service(s) en %d traject-koppeling(en). "
             . "Verplaats of verwijder die eerst.",
-            $row['label'], $use['templates'], $use['instances']
+            $row['name'], $use['templates'], $use['instances']
         ));
     }
     db_exec('DELETE FROM applicatiesoorten WHERE id = :id', [':id' => $id]);
-    audit_log('applicatiesoort_deleted', 'applicatiesoort', $id, (string)$row['label']);
+    audit_log('applicatiesoort_deleted', 'applicatiesoort', $id, (string)$row['name']);
 }
 
 /**
  * Lijst alle applicatiesoorten met usage-counts voor de beheer-UI.
+ * Sortering: alfabetisch op naam.
  */
 function applicatiesoorten_with_usage(): array {
     return db_all(
-        "SELECT a.id, a.label, a.description, a.sort_order,
+        "SELECT a.id, a.name, a.description, a.bron,
                 (SELECT COUNT(*) FROM subcategorie_templates WHERE applicatiesoort_id = a.id) AS templates,
                 (SELECT COUNT(*) FROM subcategorieen         WHERE applicatiesoort_id = a.id) AS instances
            FROM applicatiesoorten a
-          ORDER BY a.sort_order, a.id"
+          ORDER BY a.name"
     );
 }
 
@@ -118,7 +120,7 @@ function applicatiesoorten_copy_to_traject(int $trajectId, array $applicatiesoor
         "SELECT id, applicatiesoort_id, name, sort_order
            FROM subcategorie_templates
           WHERE categorie_id = $funcId AND applicatiesoort_id IN ($in)
-          ORDER BY applicatiesoort_id, sort_order, id",
+          ORDER BY applicatiesoort_id, name, id",
         $applicatiesoortIds
     );
     $n = 0;
@@ -137,8 +139,8 @@ function applicatiesoorten_copy_to_traject(int $trajectId, array $applicatiesoor
 
 /**
  * Kopieer specifieke subcategorie-templates naar een traject. Gebruikt door
- * de wizard voor NFR/VEND/LIC/SUP-keuzes (daar kiest de gebruiker individuele
- * templates in plaats van een groep).
+ * de wizard voor NFR/VEND/LIC/SUP/IMPL-keuzes (daar kiest de gebruiker
+ * individuele templates in plaats van een groep).
  */
 function templates_copy_to_traject(int $trajectId, array $templateIds): int {
     $templateIds = array_values(array_unique(array_map('intval', $templateIds)));
@@ -148,7 +150,7 @@ function templates_copy_to_traject(int $trajectId, array $templateIds): int {
         "SELECT id, categorie_id, applicatiesoort_id, name, sort_order
            FROM subcategorie_templates
           WHERE id IN ($in)
-          ORDER BY categorie_id, sort_order, id",
+          ORDER BY categorie_id, name, id",
         $templateIds
     );
     $n = 0;
@@ -166,7 +168,7 @@ function templates_copy_to_traject(int $trajectId, array $templateIds): int {
 }
 
 /**
- * Extraheer de prefix ("L-14", "ATL-1", "PF-MB") uit een naam/label.
+ * Extraheer de prefix ("L-14", "ATL-1", "PF-MB") uit een naam.
  */
 function applicatiesoort_prefix_from(string $name): ?string {
     $name = trim($name);
@@ -177,7 +179,7 @@ function applicatiesoort_prefix_from(string $name): ?string {
 
 /**
  * Vul `applicatiesoort_id` in voor bestaande FUNC `subcategorieen`-rijen
- * o.b.v. naam-prefix. Match tegen label-prefix van de applicatiesoorten.
+ * o.b.v. naam-prefix. Match tegen naam-prefix van de applicatiesoorten.
  */
 function applicatiesoorten_autolink_existing(): int {
     $rows = db_all(
@@ -187,10 +189,10 @@ function applicatiesoorten_autolink_existing(): int {
           WHERE c.code = 'FUNC' AND s.applicatiesoort_id IS NULL"
     );
     if (!$rows) return 0;
-    $apps = db_all('SELECT id, label FROM applicatiesoorten');
+    $apps = db_all('SELECT id, name FROM applicatiesoorten');
     $byPrefix = [];
     foreach ($apps as $a) {
-        $pfx = applicatiesoort_prefix_from((string)$a['label']);
+        $pfx = applicatiesoort_prefix_from((string)$a['name']);
         if ($pfx !== null) $byPrefix[$pfx] = (int)$a['id'];
     }
     $n = 0;
@@ -218,10 +220,10 @@ function applicatiesoorten_autolink_templates(): int {
           WHERE c.code = 'FUNC' AND t.applicatiesoort_id IS NULL"
     );
     if (!$rows) return 0;
-    $apps = db_all('SELECT id, label FROM applicatiesoorten');
+    $apps = db_all('SELECT id, name FROM applicatiesoorten');
     $byPrefix = [];
     foreach ($apps as $a) {
-        $pfx = applicatiesoort_prefix_from((string)$a['label']);
+        $pfx = applicatiesoort_prefix_from((string)$a['name']);
         if ($pfx !== null) $byPrefix[$pfx] = (int)$a['id'];
     }
     $n = 0;
@@ -240,7 +242,10 @@ function applicatiesoorten_autolink_templates(): int {
 
 /**
  * Seed de applicatiesoort-repository vanuit /data/applicatiesoorten_seed.php.
- * Idempotent: matcht op label-prefix (bv. "L-10") om duplicaten te voorkomen.
+ * Idempotent: matcht op naam-prefix (bv. "L-10") om duplicaten te voorkomen.
+ *
+ * Het seed-bestand gebruikt de sleutel `label`, die hier als `name` wordt
+ * weggeschreven (DB-rename).
  */
 function applicatiesoorten_seed_from_file(string $seedFile): array {
     if (!is_file($seedFile)) {
@@ -257,35 +262,34 @@ function applicatiesoorten_seed_from_file(string $seedFile): array {
     }
 
     // Bouw prefix-index van bestaande applicatiesoorten
-    $existing = db_all('SELECT id, label FROM applicatiesoorten');
+    $existing = db_all('SELECT id, name FROM applicatiesoorten');
     $byPrefix = [];
     foreach ($existing as $e) {
-        $pfx = applicatiesoort_prefix_from((string)$e['label']);
+        $pfx = applicatiesoort_prefix_from((string)$e['name']);
         if ($pfx !== null) $byPrefix[$pfx] = (int)$e['id'];
     }
 
-    $appsCreated = 0; $tplsCreated = 0; $sort = 0;
+    $appsCreated = 0; $tplsCreated = 0;
     foreach ($data as $app) {
-        $sort += 10;
         $code  = (string)($app['code'] ?? '');   // uit seed: "L-10"
-        $label = (string)($app['label'] ?? '');  // uit seed: "L-10 CPQ"
+        $name  = (string)($app['label'] ?? '');  // uit seed: "L-10 CPQ" — sleutel blijft 'label' in seedbestand
         $desc  = $app['description'] ?? null;
+        $bron  = $app['bron'] ?? null;
 
-        $pfx = $code !== '' ? $code : applicatiesoort_prefix_from($label);
+        $pfx = $code !== '' ? $code : applicatiesoort_prefix_from($name);
         $appId = ($pfx !== null && isset($byPrefix[$pfx])) ? $byPrefix[$pfx] : 0;
         if (!$appId) {
             $appId = db_insert('applicatiesoorten', [
-                'label'       => $label !== '' ? $label : $code,
+                'name'        => $name !== '' ? $name : $code,
                 'description' => $desc,
-                'sort_order'  => $sort,
+                'bron'        => $bron,
+                'sort_order'  => 0,
             ]);
             if ($pfx !== null) $byPrefix[$pfx] = $appId;
             $appsCreated++;
         }
 
-        $tSort = 0;
         foreach ($app['subs'] ?? [] as $sub) {
-            $tSort += 10;
             $subName = (string)$sub['name'];
             $exists = db_value(
                 'SELECT id FROM subcategorie_templates
@@ -297,7 +301,7 @@ function applicatiesoorten_seed_from_file(string $seedFile): array {
                     'categorie_id'       => $funcId,
                     'applicatiesoort_id' => $appId,
                     'name'               => $subName,
-                    'sort_order'         => $tSort,
+                    'sort_order'         => 0,
                 ]);
                 $tplsCreated++;
             }
@@ -307,15 +311,14 @@ function applicatiesoorten_seed_from_file(string $seedFile): array {
 }
 
 /**
- * Seed platte subcategorie-templates (NFR/VEND/LIC/SUP) voor een hoofdcat.
+ * Seed platte subcategorie-templates (NFR/VEND/LIC/SUP/IMPL) voor een hoofdcat.
  * Idempotent op (categorie_id, name).
  */
 function cat_templates_seed(string $catCode, array $names): int {
     $catId = (int)db_value('SELECT id FROM categorieen WHERE code = :c', [':c' => $catCode]);
     if (!$catId) return 0;
-    $n = 0; $sort = 0;
+    $n = 0;
     foreach ($names as $name) {
-        $sort += 10;
         $name = trim($name);
         if ($name === '') continue;
         $exists = db_value(
@@ -327,7 +330,7 @@ function cat_templates_seed(string $catCode, array $names): int {
                 'categorie_id'       => $catId,
                 'applicatiesoort_id' => null,
                 'name'               => $name,
-                'sort_order'         => $sort,
+                'sort_order'         => 0,
             ]);
             $n++;
         }

@@ -18,10 +18,10 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 const STRUCT_SHEETS = [
-    'Categorieen'      => ['code', 'name', 'type', 'sort_order'],
-    'Applicatiesoorten'=> ['label', 'description', 'sort_order'],
-    'Subcategorieen'   => ['categorie_code', 'applicatiesoort_label', 'name', 'sort_order'],
-    'DEMO-vragen'      => ['block', 'sort_order', 'text'],
+    'Categorieen'      => ['code', 'name', 'type'],
+    'Applicatiesoorten'=> ['name', 'description', 'bron'],
+    'Subcategorieen'   => ['categorie_code', 'applicatiesoort_name', 'name', 'bron'],
+    'DEMO-vragen'      => ['block', 'text'],
 ];
 
 function structure_export_xlsx(string $mode, string $filename): void {
@@ -36,13 +36,13 @@ function structure_export_xlsx(string $mode, string $filename): void {
         [''],
         ['Vul onderstaande tabbladen. Kolomvolgorde en -namen niet wijzigen.'],
         [''],
-        ['LET OP: Categorieen-code moet exact een van deze vijf zijn: FUNC, NFR, VEND, LIC, SUP.'],
-        ['Alle vijf codes zijn verplicht; naam en sort_order mag je vrij kiezen. Eigen codes worden afgekeurd.'],
+        ['LET OP: Categorieen-code moet exact een van deze zes zijn: FUNC, NFR, VEND, IMPL, SUP, LIC.'],
+        ['Alle zes codes zijn verplicht; naam mag je vrij kiezen. Eigen codes worden afgekeurd.'],
         [''],
-        ['Categorieen       — code (FUNC/NFR/VEND/LIC/SUP, alle vijf verplicht), name, type (functional/non_functional/other), sort_order'],
-        ['Applicatiesoorten — label (uniek), description, sort_order'],
-        ['Subcategorieen    — categorie_code (verwijst naar Categorieen), applicatiesoort_label (optioneel, verwijst naar Applicatiesoorten), name, sort_order'],
-        ['DEMO-vragen       — block (1..n), sort_order, text'],
+        ['Categorieen       — code (FUNC/NFR/VEND/IMPL/SUP/LIC, alle zes verplicht), name, type (functional/non_functional/other)'],
+        ['Applicatiesoorten — name (uniek), description, bron'],
+        ['Subcategorieen    — categorie_code (verwijst naar Categorieen), applicatiesoort_name (optioneel, verwijst naar Applicatiesoorten), name, bron'],
+        ['DEMO-vragen       — block (1..n), text'],
         [''],
         ['Import overschrijft de huidige structuur niet; upload alleen op een lege structuur.'],
     ], null, 'A1');
@@ -77,21 +77,21 @@ function structure_export_xlsx(string $mode, string $filename): void {
 }
 
 function _struct_fill_current(Spreadsheet $ss): void {
-    $cats = db_all('SELECT code, name, type, sort_order FROM categorieen ORDER BY sort_order, id');
-    $apps = db_all('SELECT label, description, sort_order FROM applicatiesoorten ORDER BY sort_order, id');
+    $cats = db_all('SELECT code, name, type FROM categorieen ORDER BY sort_order, id');
+    $apps = db_all('SELECT name, description, bron FROM applicatiesoorten ORDER BY name');
     $subs = db_all(
-        'SELECT c.code AS categorie_code, a.label AS applicatiesoort_label, t.name, t.sort_order
+        'SELECT c.code AS categorie_code, a.name AS applicatiesoort_name, t.name, t.bron
            FROM subcategorie_templates t
            JOIN categorieen c ON c.id = t.categorie_id
            LEFT JOIN applicatiesoorten a ON a.id = t.applicatiesoort_id
-          ORDER BY c.sort_order, t.sort_order, t.id'
+          ORDER BY c.sort_order, a.name, t.name, t.id'
     );
-    $demo = db_all('SELECT block, sort_order, text FROM demo_question_catalog WHERE active = 1 ORDER BY block, sort_order, id');
+    $demo = db_all('SELECT block, text FROM demo_question_catalog WHERE active = 1 ORDER BY block, sort_order, id');
 
-    _struct_write_rows($ss->getSheetByName('Categorieen'),       $cats, ['code','name','type','sort_order']);
-    _struct_write_rows($ss->getSheetByName('Applicatiesoorten'), $apps, ['label','description','sort_order']);
-    _struct_write_rows($ss->getSheetByName('Subcategorieen'),    $subs, ['categorie_code','applicatiesoort_label','name','sort_order']);
-    _struct_write_rows($ss->getSheetByName('DEMO-vragen'),       $demo, ['block','sort_order','text']);
+    _struct_write_rows($ss->getSheetByName('Categorieen'),       $cats, ['code','name','type']);
+    _struct_write_rows($ss->getSheetByName('Applicatiesoorten'), $apps, ['name','description','bron']);
+    _struct_write_rows($ss->getSheetByName('Subcategorieen'),    $subs, ['categorie_code','applicatiesoort_name','name','bron']);
+    _struct_write_rows($ss->getSheetByName('DEMO-vragen'),       $demo, ['block','text']);
 }
 
 function _struct_write_rows($sheet, array $rows, array $cols): void {

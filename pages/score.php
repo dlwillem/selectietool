@@ -628,7 +628,7 @@ $reqs = db_all(
     'SELECT r.id, r.code, r.title, r.description, r.type,
             s.id AS sub_id, s.name AS sub_name, s.sort_order AS sub_order,
             c.id AS cat_id, c.name AS cat_name, c.code AS cat_code, c.sort_order AS cat_order,
-            a.label AS app_label, a.description AS app_description
+            a.name AS app_name, a.description AS app_description
        FROM requirements r
        JOIN subcategorieen s ON s.id = r.subcategorie_id
        JOIN categorieen    c ON c.id = s.categorie_id

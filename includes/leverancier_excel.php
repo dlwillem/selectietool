@@ -3,7 +3,7 @@
  * Excel-export + import voor leverancier-antwoorden per requirement.
  *
  * Export: één .xlsx per leverancier, één tab per hoofdcategorie
- * (FUNC/NFR/VEND/LIC/SUP). Layout conform huisstijl: pink banner
+ * (FUNC/NFR/VEND/IMPL/SUP/LIC). Layout conform huisstijl: pink banner
  * links (traject-info), groene banner rechts (in te vullen door leverancier).
  *
  * Kolommen: code, domein (hoofdcat/subcat), titel, omschrijving, MoSCoW,
@@ -26,7 +26,7 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 const LEV_ANSWER_CHOICES = ['volledig', 'deels', 'niet', 'nvt'];
-const LEV_EXCEL_SCOPES   = ['FUNC', 'NFR', 'VEND', 'LIC', 'SUP'];
+const LEV_EXCEL_SCOPES   = ['FUNC', 'NFR', 'VEND', 'IMPL', 'SUP', 'LIC'];
 const LEV_EXCEL_LANGS    = ['nl', 'en'];
 
 /** Vertalingen per taal. */
@@ -36,8 +36,9 @@ const LEV_EXCEL_I18N = [
             'FUNC' => 'Functional Requirements',
             'NFR'  => 'Non Functional Requirements',
             'VEND' => 'Vendor Requirements',
-            'LIC'  => 'Licence Requirements',
+            'IMPL' => 'Implementation Requirements',
             'SUP'  => 'Support Requirements',
+            'LIC'  => 'Licence Requirements',
         ],
         'headers' => [
             'nr'           => 'Nr',
@@ -65,7 +66,7 @@ const LEV_EXCEL_I18N = [
             ['Leverancier',  '{lev}'],
             ['Geëxporteerd', '{date}'],
             [''],
-            ['Per hoofdcategorie staat een aparte tab (FUNC, NFR, VEND, LIC, SUP).'],
+            ['Per hoofdcategorie staat een aparte tab (FUNC, NFR, VEND, IMPL, SUP, LIC).'],
             [''],
             ['Vul per rij de kolom "Standaard Ja / Nee / Deels" in met één van:'],
             ['  Ja     — de standaardoplossing voldoet volledig aan dit requirement'],
@@ -98,8 +99,9 @@ const LEV_EXCEL_I18N = [
             'FUNC' => 'Functional Requirements',
             'NFR'  => 'Non Functional Requirements',
             'VEND' => 'Vendor Requirements',
-            'LIC'  => 'Licence Requirements',
+            'IMPL' => 'Implementation Requirements',
             'SUP'  => 'Support Requirements',
+            'LIC'  => 'Licence Requirements',
         ],
         'headers' => [
             'nr'           => 'No.',
@@ -127,7 +129,7 @@ const LEV_EXCEL_I18N = [
             ['Vendor',       '{lev}'],
             ['Exported',     '{date}'],
             [''],
-            ['Each main category has its own tab (FUNC, NFR, VEND, LIC, SUP).'],
+            ['Each main category has its own tab (FUNC, NFR, VEND, IMPL, SUP, LIC).'],
             [''],
             ['For each row, fill in the "Standard Yes / No / Partial" column with one of:'],
             ['  Yes      — the standard solution fully meets this requirement'],
@@ -628,7 +630,7 @@ function leverancier_excel_import(int $leverancierId, string $path): array {
     if ($result['errors']) return $result;
     if (!$plan) {
         if ($result['rows'] === 0) {
-            $result['errors'][] = 'Geen rijen met een Nr gevonden in de tabs FUNC/NFR/VEND/LIC/SUP. '
+            $result['errors'][] = 'Geen rijen met een Nr gevonden in de tabs FUNC/NFR/VEND/IMPL/SUP/LIC. '
                 . 'Controleer of je de juiste tabs hebt ingevuld en dat kolom "Nr" niet leeg is.';
         } else {
             $result['errors'][] = sprintf(

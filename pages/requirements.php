@@ -142,6 +142,20 @@ $bodyRenderer = function () use (
       </p>
     </div>
     <div class="actions">
+      <?php if ($traject && $selectableTrajecten): ?>
+        <form method="get" style="margin:0;">
+          <label style="display:inline-flex;align-items:center;gap:6px;">
+            <span class="muted small">Traject:</span>
+            <select name="traject_id" class="input" style="margin-top:0;width:auto;min-width:220px;" onchange="this.form.submit()">
+              <?php foreach ($selectableTrajecten as $tr): ?>
+                <option value="<?= (int)$tr['id'] ?>" <?= (int)$tr['id'] === (int)$trajectId ? 'selected' : '' ?>>
+                  <?= h($tr['name']) ?><?= $tr['status'] === 'concept' ? ' (concept)' : '' ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </label>
+        </form>
+      <?php endif; ?>
       <?php if ($traject): ?>
         <a class="btn ghost" href="<?= h(APP_BASE_URL) ?>/pages/requirements_tools.php?action=export">
           <?= icon('download', 14) ?> Exporteren

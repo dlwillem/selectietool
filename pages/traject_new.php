@@ -1,15 +1,16 @@
 <?php
 /**
- * Nieuw traject — guided wizard in 6 stappen:
+ * Nieuw traject — guided wizard in 7 stappen:
  *   1. Metadata          (naam, omschrijving, data, status)
  *   2. Applicatieservices (FUNC subcat-templates, per applicatiesoort)
  *   3. NFR-domeinen
  *   4. VEND-thema's
- *   5. LIC-thema's
+ *   5. IMPL-thema's
  *   6. SUP-thema's
+ *   7. LIC-thema's
  *
  * Alle stappen leven in één <form>; JS schakelt de panelen. Pas bij submit
- * op stap 6 wordt het traject aangemaakt.
+ * op stap 7 wordt het traject aangemaakt.
  */
 require_once __DIR__ . '/../includes/bootstrap.php';
 require_once __DIR__ . '/../includes/trajecten.php';
@@ -48,23 +49,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // FUNC applicatieservices, gegroepeerd per applicatiesoort
 $funcRows = db_all(
     "SELECT t.id, t.name, t.applicatiesoort_id,
-            a.label AS app_label, a.description AS app_description
+            a.name AS app_name, a.description AS app_description
        FROM subcategorie_templates t
        JOIN categorieen c ON c.id = t.categorie_id
        LEFT JOIN applicatiesoorten a ON a.id = t.applicatiesoort_id
       WHERE c.code = 'FUNC'
-      ORDER BY a.sort_order, a.label, t.sort_order, t.name"
+      ORDER BY a.name, t.name"
 );
-$funcByApp = []; // label => [templates]
+$funcByApp = []; // name => [templates]
 foreach ($funcRows as $r) {
-    $key = $r['app_label'] ?? '— zonder applicatiesoort —';
+    $key = $r['app_name'] ?? '— zonder applicatiesoort —';
     $funcByApp[$key]['description'] = $r['app_description'] ?? '';
     $funcByApp[$key]['templates'][] = $r;
 }
 
 // Platte templates per flat-categorie
 $flatTpls = [];
-foreach (['NFR', 'VEND', 'LIC', 'SUP'] as $code) {
+foreach (['NFR', 'VEND', 'IMPL', 'SUP', 'LIC'] as $code) {
     $catId = (int)db_value('SELECT id FROM categorieen WHERE code = :c', [':c' => $code]);
     $flatTpls[$code] = $catId ? db_all(
         "SELECT id, name FROM subcategorie_templates
@@ -79,8 +80,9 @@ $steps = [
     ['n' => 2, 'code' => 'FUNC', 'title' => 'Applicatieservices'],
     ['n' => 3, 'code' => 'NFR',  'title' => 'NFR-domeinen'],
     ['n' => 4, 'code' => 'VEND', 'title' => 'VEND-thema\'s'],
-    ['n' => 5, 'code' => 'LIC',  'title' => 'LIC-thema\'s'],
+    ['n' => 5, 'code' => 'IMPL', 'title' => 'IMPL-thema\'s'],
     ['n' => 6, 'code' => 'SUP',  'title' => 'SUP-thema\'s'],
+    ['n' => 7, 'code' => 'LIC',  'title' => 'LIC-thema\'s'],
 ];
 
 $pageTitle  = 'Nieuw traject';
@@ -179,13 +181,14 @@ $bodyRenderer = function () use ($steps, $funcByApp, $flatTpls) { ?>
       </div>
     </section>
 
-    <!-- Stap 3..6 — NFR/VEND/LIC/SUP -->
+    <!-- Stap 3..7 — NFR/VEND/IMPL/SUP/LIC -->
     <?php
       $flatMeta = [
         'NFR'  => ['step' => 3, 'title' => '3. NFR-domeinen',      'intro' => 'Kies de relevante non-functionele domeinen.'],
         'VEND' => ['step' => 4, 'title' => '4. VEND-thema\'s',     'intro' => 'Kies de relevante thema\'s voor leveranciers.'],
-        'LIC'  => ['step' => 5, 'title' => '5. LIC-thema\'s',      'intro' => 'Kies de relevante licentiemodel-thema\'s.'],
+        'IMPL' => ['step' => 5, 'title' => '5. IMPL-thema\'s',     'intro' => 'Kies de relevante implementatie-thema\'s.'],
         'SUP'  => ['step' => 6, 'title' => '6. SUP-thema\'s',      'intro' => 'Kies de relevante support-thema\'s.'],
+        'LIC'  => ['step' => 7, 'title' => '7. LIC-thema\'s',      'intro' => 'Kies de relevante licentiemodel-thema\'s.'],
       ];
       foreach ($flatMeta as $code => $fm):
         $st  = requirement_cat_style($code);

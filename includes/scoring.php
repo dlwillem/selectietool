@@ -2,7 +2,7 @@
 /**
  * Scoring-rondes — nieuw model (per leverancier × scope).
  *
- * Ronde-scope is een hoofdcategorie (FUNC/NFR/VEND/LIC/SUP) of 'DEMO'.
+ * Ronde-scope is een hoofdcategorie (FUNC/NFR/VEND/IMPL/SUP/LIC) of 'DEMO'.
  * Per (traject, leverancier, scope) bestaat er maximaal één ronde.
  * Statussen: concept → open → gesloten (eenmaal gesloten niet meer herop.).
  *
@@ -14,7 +14,7 @@
 if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 const RONDE_STATUSES = ['concept', 'open', 'gesloten'];
-const RONDE_SCOPES   = ['FUNC', 'NFR', 'VEND', 'LIC', 'SUP', 'DEMO'];
+const RONDE_SCOPES   = ['FUNC', 'NFR', 'VEND', 'IMPL', 'SUP', 'LIC', 'DEMO'];
 
 function ronde_status_label(string $s): string {
     return [
@@ -175,7 +175,7 @@ function scoring_matrix(int $trajectId): array {
                   WHERE d.ronde_id = r.id AND d.completed_at IS NOT NULL) AS completed
            FROM scoring_rondes r
           WHERE r.traject_id = :t
-          ORDER BY r.leverancier_id, FIELD(r.scope, "FUNC","NFR","VEND","LIC","SUP","DEMO")',
+          ORDER BY r.leverancier_id, FIELD(r.scope, "FUNC","NFR","VEND","IMPL","SUP","LIC","DEMO")',
         [':t' => $trajectId]
     );
     $matrix = [];

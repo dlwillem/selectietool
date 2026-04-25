@@ -1,7 +1,7 @@
 <?php
 /**
  * CRUD voor subcategorieën — per traject, per hoofdcategorie.
- * Alle hoofdcategorieën (FUNC/NFR/VEND/LIC/SUP) zijn via deze helpers
+ * Alle hoofdcategorieën (FUNC/NFR/VEND/IMPL/SUP/LIC) zijn via deze helpers
  * bewerkbaar. Bij elke wijziging worden de gewichten binnen de hoofdcategorie
  * gelijkmatig herverdeeld.
  */

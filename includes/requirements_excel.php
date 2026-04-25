@@ -32,7 +32,7 @@ const REQ_EXCEL_COLUMNS = [
  * Download .xlsx met alle requirements van dit traject.
  *
  * Gestileerd in dezelfde huisstijl als de leverancier-export: één tabblad
- * per hoofdcategorie (FUNC/NFR/VEND/LIC/SUP) met een roze banner en kolommen
+ * per hoofdcategorie (FUNC/NFR/VEND/IMPL/SUP/LIC) met een roze banner en kolommen
  * Nr, Domein, Titel, Omschrijving, MoSCoW. Géén antwoord-kolommen en géén
  * instructies-tab (dit bestand is voor intern gebruik).
  */
@@ -67,13 +67,14 @@ function requirements_excel_export(int $trajectId, string $filename): void {
     $subsByScope = [];
     foreach ($subRows as $sr) $subsByScope[$sr['cat_code']][] = $sr['name'];
 
-    $scopes = ['FUNC', 'NFR', 'VEND', 'LIC', 'SUP'];
+    $scopes = ['FUNC', 'NFR', 'VEND', 'IMPL', 'SUP', 'LIC'];
     $titles = [
         'FUNC' => 'Functional Requirements',
         'NFR'  => 'Non Functional Requirements',
         'VEND' => 'Vendor Requirements',
-        'LIC'  => 'Licence Requirements',
+        'IMPL' => 'Implementation Requirements',
         'SUP'  => 'Support Requirements',
+        'LIC'  => 'Licence Requirements',
     ];
     $moscow = ['eis' => 'Must', 'wens' => 'Should', 'ko' => 'Knock-out'];
 

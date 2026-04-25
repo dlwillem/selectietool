@@ -96,7 +96,7 @@ $bodyRenderer = function () use ($traject, $trajectId, $canEdit, $locked, $uploa
     </p>
     <ul class="muted small" style="margin:0 0 10px 18px;padding:0;">
       <li>Kolomvolgorde (rij 1): <code>code, hoofdcategorie, subcategorie, titel, omschrijving, type</code>.</li>
-      <li>Lege <code>code</code> → nieuw requirement; code wordt automatisch toegekend per hoofdcategorie (FR-, NFR-, VEND-, LIC-, SUP-).</li>
+      <li>Lege <code>code</code> → nieuw requirement; code wordt automatisch toegekend per hoofdcategorie (FR-, NFR-, VEND-, IMPL-, SUP-, LIC-).</li>
       <li>Ingevulde <code>code</code> → update op het bestaande requirement met die code.</li>
       <li>Onbekende hoofd- of subcategorie-naam, onbekende code, of onbekend type → upload wordt volledig afgekeurd; 0 mutaties.</li>
       <li><strong>Alles-of-niets</strong>: één fout blokkeert de hele upload.</li>

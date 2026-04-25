@@ -48,7 +48,7 @@ if (!in_array($tab, ['details', 'collegas', 'structuur', 'scoring', 'weging', 'l
 // weging tab mag iedereen zien (transparantie); edit-controls worden zelf afgeschermd.
 
 $stab = input_str('stab');
-if (!in_array($stab, ['FUNC', 'NFR', 'VEND', 'LIC', 'SUP', 'DEMO'], true)) $stab = 'FUNC';
+if (!in_array($stab, ['FUNC', 'NFR', 'VEND', 'IMPL', 'SUP', 'LIC', 'DEMO'], true)) $stab = 'FUNC';
 
 // Scoring drill-in: ?leverancier=X&scope=Y
 $drillLev   = (int)input_int('leverancier');
@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $redirectTab = input_str('tab') ?: 'details';
     if (!in_array($redirectTab, ['details', 'collegas', 'structuur', 'scoring', 'weging', 'leveranciers'], true)) $redirectTab = 'details';
     $redirectStab = input_str('stab') ?: 'FUNC';
-    if (!in_array($redirectStab, ['FUNC', 'NFR', 'VEND', 'LIC', 'SUP', 'DEMO'], true)) $redirectStab = 'FUNC';
+    if (!in_array($redirectStab, ['FUNC', 'NFR', 'VEND', 'IMPL', 'SUP', 'LIC', 'DEMO'], true)) $redirectStab = 'FUNC';
     $redirectLev   = input_int('leverancier');
     $redirectScope = input_str('scope');
     if (!in_array($redirectScope, RONDE_SCOPES, true)) $redirectScope = '';
@@ -547,7 +547,7 @@ function render_tab_details(array $traject, bool $canEdit): void { ?>
 <?php }
 
 function render_tab_collegas(array $collegas, bool $canEdit, int $trajectId, array $koppelbareUsers = []): void {
-    $scopes = TD_SCOPES; // FUNC/NFR/VEND/LIC/SUP
+    $scopes = TD_SCOPES; // FUNC/NFR/VEND/IMPL/SUP/LIC
 ?>
   <div class="card" style="border-left:4px solid var(--blue-500);">
     <div class="card-title">
@@ -774,7 +774,7 @@ function render_tab_structuur(array $structure, bool $canEdit, int $id, string $
                   <input form="<?= h($fid) ?>" type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>">
                 </td>
                 <?php if ($isFunc): ?>
-                  <td class="muted small"><?= h((string)($s['app_label'] ?? '—')) ?: '—' ?></td>
+                  <td class="muted small"><?= h((string)($s['app_name'] ?? '—')) ?: '—' ?></td>
                 <?php endif; ?>
                 <td><span class="badge <?= $reqCount ? h($style['color']) : 'gray' ?>"><?= $reqCount ?></span></td>
                 <td class="right" style="white-space:nowrap;">
@@ -795,7 +795,7 @@ function render_tab_structuur(array $structure, bool $canEdit, int $id, string $
               <?php else: ?>
                 <td><?= h($s['name']) ?></td>
                 <?php if ($isFunc): ?>
-                  <td class="muted small"><?= h((string)($s['app_label'] ?? '—')) ?: '—' ?></td>
+                  <td class="muted small"><?= h((string)($s['app_name'] ?? '—')) ?: '—' ?></td>
                 <?php endif; ?>
                 <td><span class="badge <?= $reqCount ? h($style['color']) : 'gray' ?>"><?= $reqCount ?></span></td>
                 <td class="right"></td>
@@ -1101,8 +1101,9 @@ function render_scoring_drilldown(
     $colorVar = 'var(--' . $style['color'] . '-600)';
     $scopeLabels = [
         'FUNC' => 'Functioneel', 'NFR' => 'Non-functioneel',
-        'VEND' => 'Leverancier', 'LIC' => 'Licentie',
-        'SUP'  => 'Support',     'DEMO' => 'Demo',
+        'VEND' => 'Leverancier', 'IMPL' => 'Implementatie',
+        'SUP'  => 'Support',     'LIC'  => 'Licentie',
+        'DEMO' => 'Demo',
     ];
     $scopeTitle = $scopeLabels[$scope] ?? $scope;
     $qsBase = 'id=' . $trajectId . '&tab=scoring&leverancier=' . $lid
@@ -1437,7 +1438,7 @@ function render_tab_weging(array $structure, array $weights, bool $canWeight, in
       Met de sliders hieronder bepaal je <strong>hoe zwaar</strong> elk niveau meetelt:
     </p>
     <ul style="margin:0 0 8px 20px;">
-      <li>De <strong>hoofdcategorie-sliders</strong> verdelen 100% over FUNC/NFR/VEND/LIC/SUP.</li>
+      <li>De <strong>hoofdcategorie-sliders</strong> verdelen 100% over FUNC/NFR/VEND/IMPL/SUP/LIC.</li>
       <li>Per hoofdcategorie verdelen de sub-sliders op hun beurt 100% over de onderliggende elementen.</li>
       <li>Binnen elk niveau herverdelen de andere sliders automatisch mee — de som blijft altijd 100%.</li>
     </ul>

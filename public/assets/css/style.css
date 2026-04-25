@@ -503,6 +503,7 @@ label.field input[type="file"]::file-selector-button:hover {
 .badge.b-gearchiveerd,
 .badge.b-arch  { background: #fef3c7; color: #92400e; }
 .badge.blue    { background: #dbeafe; color: #1d4ed8; }
+.badge.cyan    { background: #cffafe; color: #0e7490; }
 .badge.gray,
 .badge.b-concept { background: #f3f4f6; color: #6b7280; }
 .badge.b-actief-green { background: #dcfce7; color: #15803d; }

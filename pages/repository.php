@@ -6,6 +6,7 @@
  *  - VEND → Thema's leverancier (platte subcategorie-templates)
  *  - LIC  → Thema's licenties (platte subcategorie-templates)
  *  - SUP  → Thema's support (platte subcategorie-templates)
+ *  - APP  → Applicatiesoorten (CRUD; FUNC-groepering van app-services)
  */
 require_once __DIR__ . '/../includes/bootstrap.php';
 require_once __DIR__ . '/../includes/applicatiesoorten.php';
@@ -19,9 +20,11 @@ $tabs = [
     'VEND' => ['title' => 'Thema\'s leverancier', 'singular' => 'thema'],
     'LIC'  => ['title' => 'Thema\'s licenties',   'singular' => 'thema'],
     'SUP'  => ['title' => 'Thema\'s support',     'singular' => 'thema'],
+    'APP'  => ['title' => 'App services',         'singular' => 'applicatiesoort'],
 ];
 $catIds = [];
 foreach ($tabs as $code => $_) {
+    if ($code === 'APP') continue; // geen categorie-record
     $catIds[$code] = (int)db_value('SELECT id FROM categorieen WHERE code = :c', [':c' => $code]);
 }
 $funcId = $catIds['FUNC'];
@@ -40,10 +43,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         switch ($action) {
             case 'app_create':
                 applicatiesoort_create(
-                    input_str('label'),
-                    input_str('description')
+                    input_str('name'),
+                    input_str('description'),
+                    input_str('bron')
                 );
                 flash_set('success', 'Applicatiesoort toegevoegd.');
+                break;
+
+            case 'app_update':
+                applicatiesoort_update(
+                    (int)input_str('id'),
+                    input_str('name'),
+                    input_str('description'),
+                    input_str('bron')
+                );
+                flash_set('success', 'Applicatiesoort bijgewerkt.');
+                break;
+
+            case 'app_delete':
+                applicatiesoort_delete((int)input_str('id'));
+                flash_set('success', 'Applicatiesoort verwijderd.');
                 break;
 
             case 'tpl_create':
@@ -98,11 +117,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // ─── Data laden ──────────────────────────────────────────────────────────────
-$activeCatId = $catIds[$activeTab];
-$applicatiesoorten = db_all('SELECT id, label, description FROM applicatiesoorten ORDER BY sort_order, label');
+$activeCatId = $catIds[$activeTab] ?? 0;
+$applicatiesoorten = db_all('SELECT id, name, description FROM applicatiesoorten ORDER BY name');
+$apps = []; // voor APP-tab
+$rows = [];
 
-if ($activeTab === 'FUNC') {
-    $sql = "SELECT t.id, t.name, t.applicatiesoort_id, a.label AS app_label, a.description AS app_description
+if ($activeTab === 'APP') {
+    $apps = applicatiesoorten_with_usage();
+} elseif ($activeTab === 'FUNC') {
+    $sql = "SELECT t.id, t.name, t.applicatiesoort_id, a.name AS app_name, a.description AS app_description
               FROM subcategorie_templates t
               LEFT JOIN applicatiesoorten a ON a.id = t.applicatiesoort_id
              WHERE t.categorie_id = :c";
@@ -113,7 +136,7 @@ if ($activeTab === 'FUNC') {
     } elseif ($filterApp === -1) {
         $sql .= ' AND t.applicatiesoort_id IS NULL';
     }
-    $sql .= ' ORDER BY a.sort_order, a.label, t.sort_order, t.name';
+    $sql .= ' ORDER BY a.name, t.name';
     $rows = db_all($sql, $params);
 } else {
     $rows = db_all(
@@ -127,7 +150,7 @@ if ($activeTab === 'FUNC') {
 $pageTitle  = 'Structuur stamdata';
 $currentNav = 'repository';
 
-$bodyRenderer = function () use ($tabs, $activeTab, $activeCatId, $rows, $applicatiesoorten, $filterApp, $funcId) {
+$bodyRenderer = function () use ($tabs, $activeTab, $activeCatId, $rows, $apps, $applicatiesoorten, $filterApp, $funcId) {
     ?>
   <div class="page-header">
     <div>
@@ -144,8 +167,8 @@ $bodyRenderer = function () use ($tabs, $activeTab, $activeCatId, $rows, $applic
             <?= icon('refresh', 14) ?> Auto-koppelen
           </button>
         </form>
-        <button type="button" class="btn"
-                onclick="document.getElementById('new-app-modal').style.display='flex'">
+      <?php elseif ($activeTab === 'APP'): ?>
+        <button type="button" class="btn" onclick="appModalOpen()">
           <?= icon('plus', 14) ?> Nieuwe applicatiesoort
         </button>
       <?php endif; ?>
@@ -156,8 +179,12 @@ $bodyRenderer = function () use ($tabs, $activeTab, $activeCatId, $rows, $applic
   <div class="tabs" style="display:flex;gap:4px;border-bottom:1px solid var(--gray-200);margin-bottom:16px;flex-wrap:wrap;">
     <?php foreach ($tabs as $code => $m):
       $active = ($code === $activeTab);
-      $style  = requirement_cat_style($code);
-      $col    = 'var(--' . $style['color'] . '-600)';
+      if ($code === 'APP') {
+          $style = ['icon' => 'layers', 'color' => 'slate'];
+      } else {
+          $style = requirement_cat_style($code);
+      }
+      $col = 'var(--' . $style['color'] . '-600)';
     ?>
       <a href="<?= h(APP_BASE_URL) ?>/pages/repository.php?tab=<?= h($code) ?>"
          class="tab<?= $active ? ' active' : '' ?>"
@@ -168,135 +195,237 @@ $bodyRenderer = function () use ($tabs, $activeTab, $activeCatId, $rows, $applic
     <?php endforeach; ?>
   </div>
 
-  <div class="card" style="padding:0;">
-    <div style="padding:12px 16px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
-      <div>
-        <strong><?= h($tabs[$activeTab]['title']) ?></strong>
-        <span class="muted small">(<?= count($rows) ?>)</span>
+  <?php if ($activeTab === 'APP'): ?>
+
+    <!-- ─── APP-tab: Applicatiesoorten CRUD ─────────────────────────── -->
+    <div class="card" style="padding:0;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div>
+          <strong>App services</strong>
+          <span class="muted small">(<?= count($apps) ?>)</span>
+        </div>
+        <span class="muted small">FUNC-groepering van app-services</span>
       </div>
-      <?php if ($activeTab === 'FUNC'): ?>
-        <form method="get" class="row-sm" style="gap:6px;align-items:center;margin:0;">
-          <input type="hidden" name="tab" value="FUNC">
-          <label class="muted small" for="filter-app">Filter applicatiesoort:</label>
-          <select id="filter-app" name="app" class="input" style="margin-top:0;width:auto;min-width:220px;" onchange="this.form.submit()">
-            <option value="0">— alles —</option>
-            <option value="-1" <?= $filterApp === -1 ? 'selected' : '' ?>>(zonder applicatiesoort)</option>
-            <?php foreach ($applicatiesoorten as $a): ?>
-              <option value="<?= (int)$a['id'] ?>" <?= $filterApp === (int)$a['id'] ? 'selected' : '' ?>>
-                <?= h($a['label']) ?>
-              </option>
-            <?php endforeach; ?>
-          </select>
-        </form>
-      <?php endif; ?>
+      <div style="padding:8px 16px 16px;">
+        <?php if (!$apps): ?>
+          <p class="muted small" style="margin:12px 0 0;">Nog geen applicatiesoorten. Voeg er één toe of upload een structuur via Instellingen → Structuur.</p>
+        <?php else: ?>
+          <table class="table" style="font-size:0.875rem;">
+            <thead>
+              <tr>
+                <th>Naam</th>
+                <th>Beschrijving</th>
+                <th>Bron</th>
+                <th style="width:110px;">App-services</th>
+                <th style="width:110px;">In trajecten</th>
+                <th style="width:160px;text-align:right;">Acties</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($apps as $a): $busy = ((int)$a['templates'] + (int)$a['instances']) > 0; ?>
+                <tr>
+                  <td><strong><?= h($a['name']) ?></strong></td>
+                  <td class="muted small"><?= h((string)($a['description'] ?? '')) ?></td>
+                  <td class="muted small"><?= h((string)($a['bron'] ?? '')) ?></td>
+                  <td><span class="badge"><?= (int)$a['templates'] ?></span></td>
+                  <td><span class="badge"><?= (int)$a['instances'] ?></span></td>
+                  <td style="text-align:right;white-space:nowrap;">
+                    <button type="button" class="btn sm ghost"
+                            data-app-id="<?= (int)$a['id'] ?>"
+                            data-app-name="<?= h($a['name']) ?>"
+                            data-app-desc="<?= h((string)($a['description'] ?? '')) ?>"
+                            data-app-bron="<?= h((string)($a['bron'] ?? '')) ?>"
+                            onclick="appModalEdit(this)">
+                      <?= icon('edit', 12) ?> Bewerken
+                    </button>
+                    <?php if ($busy): ?>
+                      <button type="button" class="btn sm ghost" disabled
+                              title="Kan niet verwijderen: nog <?= (int)$a['templates'] ?> app-service(s) en <?= (int)$a['instances'] ?> traject-koppeling(en).">
+                        <?= icon('trash', 12) ?>
+                      </button>
+                    <?php else: ?>
+                      <form method="post" style="display:inline;"
+                            onsubmit="return confirm('Applicatiesoort \u0022<?= h(addslashes($a['name'])) ?>\u0022 verwijderen?');">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="action" value="app_delete">
+                        <input type="hidden" name="tab" value="APP">
+                        <input type="hidden" name="id" value="<?= (int)$a['id'] ?>">
+                        <button type="submit" class="btn sm ghost" title="Verwijderen">
+                          <?= icon('trash', 12) ?>
+                        </button>
+                      </form>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+          <p class="muted small" style="margin:10px 0 0;">
+            Verwijderen is alleen mogelijk als er geen app-services en geen traject-koppelingen meer aan hangen.
+          </p>
+        <?php endif; ?>
+      </div>
     </div>
 
-    <div style="padding:8px 16px 16px;">
-      <table class="table" style="font-size:0.875rem;">
-        <thead>
-          <tr>
-            <th>Naam</th>
-            <?php if ($activeTab === 'FUNC'): ?>
-              <th style="width:280px;">Applicatiesoort</th>
-            <?php endif; ?>
-            <th style="width:140px;" class="right"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($rows as $t): ?>
+    <!-- Applicatiesoort modal (create + edit) -->
+    <div id="app-modal" class="modal-backdrop" style="display:none;"
+         onclick="if(event.target===this)this.style.display='none'">
+      <div class="modal">
+        <div class="modal-header">
+          <h2 id="app-modal-title">Nieuwe applicatiesoort</h2>
+          <button type="button" class="btn-icon" onclick="appModalClose()">
+            <?= icon('x', 16) ?>
+          </button>
+        </div>
+        <form method="post" autocomplete="off">
+          <?= csrf_field() ?>
+          <input type="hidden" name="action" id="app-form-action" value="app_create">
+          <input type="hidden" name="tab" value="APP">
+          <input type="hidden" name="id" id="app-form-id" value="">
+          <div class="modal-body">
+            <label class="field">Naam
+              <input type="text" name="name" id="app-form-name"
+                     required maxlength="200" autofocus placeholder="Bijv. L-17 HRM — Human Resource Management">
+            </label>
+            <label class="field">Beschrijving <span class="muted small">(optioneel)</span>
+              <textarea name="description" id="app-form-desc" rows="3" maxlength="1000"></textarea>
+            </label>
+            <label class="field">Bron <span class="muted small">(optioneel)</span>
+              <input type="text" name="bron" id="app-form-bron" maxlength="190" placeholder="bijv. APQC PCF 4.0 / LeanIX">
+            </label>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn ghost" onclick="appModalClose()">Annuleren</button>
+            <button type="submit" class="btn" id="app-form-submit">Aanmaken</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script>
+      function appModalOpen() {
+        document.getElementById('app-modal-title').textContent = 'Nieuwe applicatiesoort';
+        document.getElementById('app-form-action').value  = 'app_create';
+        document.getElementById('app-form-id').value      = '';
+        document.getElementById('app-form-name').value    = '';
+        document.getElementById('app-form-desc').value    = '';
+        document.getElementById('app-form-bron').value    = '';
+        document.getElementById('app-form-submit').textContent = 'Aanmaken';
+        document.getElementById('app-modal').style.display = 'flex';
+      }
+      function appModalEdit(btn) {
+        document.getElementById('app-modal-title').textContent = 'Applicatiesoort bewerken';
+        document.getElementById('app-form-action').value  = 'app_update';
+        document.getElementById('app-form-id').value      = btn.dataset.appId;
+        document.getElementById('app-form-name').value    = btn.dataset.appName;
+        document.getElementById('app-form-desc').value    = btn.dataset.appDesc;
+        document.getElementById('app-form-bron').value    = btn.dataset.appBron;
+        document.getElementById('app-form-submit').textContent = 'Opslaan';
+        document.getElementById('app-modal').style.display = 'flex';
+      }
+      function appModalClose() {
+        document.getElementById('app-modal').style.display = 'none';
+      }
+    </script>
+
+  <?php else: ?>
+
+    <div class="card" style="padding:0;">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div>
+          <strong><?= h($tabs[$activeTab]['title']) ?></strong>
+          <span class="muted small">(<?= count($rows) ?>)</span>
+        </div>
+        <?php if ($activeTab === 'FUNC'): ?>
+          <form method="get" class="row-sm" style="gap:6px;align-items:center;margin:0;">
+            <input type="hidden" name="tab" value="FUNC">
+            <label class="muted small" for="filter-app">Filter applicatiesoort:</label>
+            <select id="filter-app" name="app" class="input" style="margin-top:0;width:auto;min-width:220px;" onchange="this.form.submit()">
+              <option value="0">— alles —</option>
+              <option value="-1" <?= $filterApp === -1 ? 'selected' : '' ?>>(zonder applicatiesoort)</option>
+              <?php foreach ($applicatiesoorten as $a): ?>
+                <option value="<?= (int)$a['id'] ?>" <?= $filterApp === (int)$a['id'] ? 'selected' : '' ?>>
+                  <?= h($a['name']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+          </form>
+        <?php endif; ?>
+      </div>
+
+      <div style="padding:8px 16px 16px;">
+        <table class="table" style="font-size:0.875rem;">
+          <thead>
+            <tr>
+              <th>Naam</th>
+              <?php if ($activeTab === 'FUNC'): ?>
+                <th style="width:280px;">Applicatiesoort</th>
+              <?php endif; ?>
+              <th style="width:140px;" class="right"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <?php foreach ($rows as $t): ?>
+              <tr>
+                <form method="post" style="display:contents;">
+                  <?= csrf_field() ?>
+                  <input type="hidden" name="action" value="tpl_update">
+                  <input type="hidden" name="tab" value="<?= h($activeTab) ?>">
+                  <?php if ($activeTab === 'FUNC' && $filterApp): ?>
+                    <input type="hidden" name="filter_app" value="<?= (int)$filterApp ?>">
+                  <?php endif; ?>
+                  <input type="hidden" name="id" value="<?= (int)$t['id'] ?>">
+                  <td><input type="text" class="input" name="name" value="<?= h($t['name']) ?>" required maxlength="200" style="margin-top:0;"></td>
+                  <?php if ($activeTab === 'FUNC'): ?>
+                    <td>
+                      <input type="text" class="input" readonly
+                             value="<?= h($t['app_name'] ?? '—') ?>"
+                             title="<?= h($t['app_description'] ?? '') ?>"
+                             style="margin-top:0;background:var(--gray-50);cursor:help;">
+                    </td>
+                  <?php endif; ?>
+                  <td class="right">
+                    <button type="submit" class="btn sm ghost"><?= icon('check', 12) ?></button>
+                    <button type="submit" name="action" value="tpl_delete" class="btn sm ghost"
+                            style="color:var(--red-700);"
+                            onclick="return confirm('<?= h(ucfirst($tabs[$activeTab]['singular'])) ?> verwijderen?');">
+                      <?= icon('trash', 12) ?>
+                    </button>
+                  </td>
+                </form>
+              </tr>
+            <?php endforeach; ?>
             <tr>
               <form method="post" style="display:contents;">
                 <?= csrf_field() ?>
-                <input type="hidden" name="action" value="tpl_update">
+                <input type="hidden" name="action" value="tpl_create">
                 <input type="hidden" name="tab" value="<?= h($activeTab) ?>">
                 <?php if ($activeTab === 'FUNC' && $filterApp): ?>
                   <input type="hidden" name="filter_app" value="<?= (int)$filterApp ?>">
                 <?php endif; ?>
-                <input type="hidden" name="id" value="<?= (int)$t['id'] ?>">
-                <td><input type="text" class="input" name="name" value="<?= h($t['name']) ?>" required maxlength="200" style="margin-top:0;"></td>
+                <input type="hidden" name="categorie_id" value="<?= (int)$activeCatId ?>">
+                <td><input type="text" class="input" name="name" placeholder="Nieuwe <?= h($tabs[$activeTab]['singular']) ?>…" maxlength="200" style="margin-top:0;"></td>
                 <?php if ($activeTab === 'FUNC'): ?>
                   <td>
-                    <input type="text" class="input" readonly
-                           value="<?= h($t['app_label'] ?? '—') ?>"
-                           title="<?= h($t['app_description'] ?? '') ?>"
-                           style="margin-top:0;background:var(--gray-50);cursor:help;">
+                    <select name="applicatiesoort_id" class="input" required style="margin-top:0;">
+                      <option value="">— kies applicatiesoort —</option>
+                      <?php foreach ($applicatiesoorten as $a): ?>
+                        <option value="<?= (int)$a['id'] ?>"
+                                <?= $filterApp > 0 && (int)$a['id'] === $filterApp ? 'selected' : '' ?>
+                                title="<?= h((string)$a['description']) ?>">
+                          <?= h($a['name']) ?>
+                        </option>
+                      <?php endforeach; ?>
+                    </select>
                   </td>
                 <?php endif; ?>
-                <td class="right">
-                  <button type="submit" class="btn sm ghost"><?= icon('check', 12) ?></button>
-                  <button type="submit" name="action" value="tpl_delete" class="btn sm ghost"
-                          style="color:var(--red-700);"
-                          onclick="return confirm('<?= h(ucfirst($tabs[$activeTab]['singular'])) ?> verwijderen?');">
-                    <?= icon('trash', 12) ?>
-                  </button>
-                </td>
+                <td class="right"><button type="submit" class="btn sm"><?= icon('plus', 12) ?> Toevoegen</button></td>
               </form>
             </tr>
-          <?php endforeach; ?>
-          <tr>
-            <form method="post" style="display:contents;">
-              <?= csrf_field() ?>
-              <input type="hidden" name="action" value="tpl_create">
-              <input type="hidden" name="tab" value="<?= h($activeTab) ?>">
-              <?php if ($activeTab === 'FUNC' && $filterApp): ?>
-                <input type="hidden" name="filter_app" value="<?= (int)$filterApp ?>">
-              <?php endif; ?>
-              <input type="hidden" name="categorie_id" value="<?= (int)$activeCatId ?>">
-              <td><input type="text" class="input" name="name" placeholder="Nieuwe <?= h($tabs[$activeTab]['singular']) ?>…" maxlength="200" style="margin-top:0;"></td>
-              <?php if ($activeTab === 'FUNC'): ?>
-                <td>
-                  <select name="applicatiesoort_id" class="input" required style="margin-top:0;">
-                    <option value="">— kies applicatiesoort —</option>
-                    <?php foreach ($applicatiesoorten as $a): ?>
-                      <option value="<?= (int)$a['id'] ?>"
-                              <?= $filterApp > 0 && (int)$a['id'] === $filterApp ? 'selected' : '' ?>
-                              title="<?= h((string)$a['description']) ?>">
-                        <?= h($a['label']) ?>
-                      </option>
-                    <?php endforeach; ?>
-                  </select>
-                </td>
-              <?php endif; ?>
-              <td class="right"><button type="submit" class="btn sm"><?= icon('plus', 12) ?> Toevoegen</button></td>
-            </form>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- Nieuwe applicatiesoort modal (alleen FUNC-tab) -->
-  <?php if ($activeTab === 'FUNC'): ?>
-  <div id="new-app-modal" class="modal-backdrop" style="display:none;"
-       onclick="if(event.target===this)this.style.display='none'">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>Nieuwe applicatiesoort</h2>
-        <button type="button" class="btn-icon" onclick="document.getElementById('new-app-modal').style.display='none'">
-          <?= icon('x', 16) ?>
-        </button>
+          </tbody>
+        </table>
       </div>
-      <form method="post" autocomplete="off">
-        <?= csrf_field() ?>
-        <input type="hidden" name="action" value="app_create">
-        <input type="hidden" name="tab" value="FUNC">
-        <div class="modal-body">
-          <label class="field">Label
-            <input type="text" class="input" name="label" required maxlength="200" placeholder="bijv. L-99 ERP-light" autofocus>
-          </label>
-          <label class="field">Beschrijving
-            <textarea class="input" name="description" rows="3" maxlength="2000"></textarea>
-          </label>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn ghost" onclick="document.getElementById('new-app-modal').style.display='none'">
-            Annuleren
-          </button>
-          <button type="submit" class="btn">Aanmaken</button>
-        </div>
-      </form>
     </div>
-  </div>
+
   <?php endif; ?>
 
 <?php };

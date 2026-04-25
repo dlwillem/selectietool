@@ -73,7 +73,7 @@ function traject_create(
             applicatiesoorten_copy_to_traject($id, $applicatiesoortIds);
         }
 
-        // NFR/VEND/LIC/SUP: individueel gekozen templates
+        // NFR/VEND/IMPL/SUP/LIC: individueel gekozen templates
         if ($flatTemplateIds) {
             templates_copy_to_traject($id, $flatTemplateIds);
         }

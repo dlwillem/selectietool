@@ -29,7 +29,7 @@ $faqGroups = [
         ],
         [
             'q' => 'Wat is een "scope" en welke zijn er?',
-            'a' => 'Een scope is een hoofdcategorie requirements: FUNC (functioneel), NFR (non-functioneel), VEND (leverancier), LIC (licentie), SUP (support) en DEMO (demo-beoordeling). Per leverancier wordt per scope een eigen scoring-ronde bijgehouden.',
+            'a' => 'Een scope is een hoofdcategorie requirements: FUNC (functioneel), NFR (non-functioneel), VEND (leverancier), IMPL (implementatie), SUP (support), LIC (licentie) en DEMO (demo-beoordeling). Per leverancier wordt per scope een eigen scoring-ronde bijgehouden.',
         ],
     ],
     'Requirements' => [
@@ -43,7 +43,7 @@ $faqGroups = [
         ],
         [
             'q' => 'Kan ik requirements importeren uit Excel?',
-            'a' => 'Ja, rechtstreeks op de Requirements-pagina zelf via de knop "Uploaden" (naast "Exporteren"). Het formaat moet overeenkomen met de export: per scope een tabblad (FUNC/NFR/VEND/LIC/SUP) met kolommen Nr, Domein, Titel, Omschrijving en MoSCoW. De upload doet strict all-or-nothing: alle regels slagen, of niets wordt weggeschreven. Validatie: hoofdcategorie + thema moeten bestaan in het traject, MoSCoW moet een geldige waarde zijn (MUST/SHOULD/KNOCK-OUT), en bij fouten krijg je tab + rijnummer terug. Zodra er al scores zijn ingevoerd is de upload gelocked — je ziet dan een 🔒 en de knop blokkeert om te voorkomen dat requirements onder beoordelaars wegveranderen.',
+            'a' => 'Ja, rechtstreeks op de Requirements-pagina zelf via de knop "Uploaden" (naast "Exporteren"). Het formaat moet overeenkomen met de export: per scope een tabblad (FUNC/NFR/VEND/IMPL/SUP/LIC) met kolommen Nr, Domein, Titel, Omschrijving en MoSCoW. De upload doet strict all-or-nothing: alle regels slagen, of niets wordt weggeschreven. Validatie: hoofdcategorie + thema moeten bestaan in het traject, MoSCoW moet een geldige waarde zijn (MUST/SHOULD/KNOCK-OUT), en bij fouten krijg je tab + rijnummer terug. Zodra er al scores zijn ingevoerd is de upload gelocked — je ziet dan een 🔒 en de knop blokkeert om te voorkomen dat requirements onder beoordelaars wegveranderen.',
         ],
         [
             'q' => 'Wat zijn thema\'s?',
@@ -141,7 +141,7 @@ $faqGroups = [
     'Rapportage — dieper' => [
         [
             'q' => 'Wat vind ik op de Rapportage-pagina?',
-            'a' => 'Een per-traject overzicht van alle leveranciers met hun scores per scope (FUNC, NFR, VEND, LIC, SUP, DEMO), gewogen eindscore, knock-out-status en een rangschikking. Je kunt inzoomen op een leverancier voor per-requirement detail.',
+            'a' => 'Een per-traject overzicht van alle leveranciers met hun scores per scope (FUNC, NFR, VEND, IMPL, SUP, LIC, DEMO), gewogen eindscore, knock-out-status en een rangschikking. Je kunt inzoomen op een leverancier voor per-requirement detail.',
         ],
         [
             'q' => 'Welke wegingen worden gebruikt?',
@@ -207,7 +207,7 @@ Eindscore                         <strong style="color:#67e8f9;">3.67</strong>  
     'Structuur stamdata' => [
         [
             'q' => 'Wat is de Structuur stamdata?',
-            'a' => 'Structuur stamdata is de centrale plek voor stamdata: hoofdcategorieën, applicatiesoorten (FUNC-templates), thema-templates voor NFR/VEND/LIC/SUP, en de mastersets van requirements. Vanuit hier worden trajecten gevoed.',
+            'a' => 'Structuur stamdata is de centrale plek voor stamdata: hoofdcategorieën, applicatiesoorten (FUNC-templates), thema-templates voor NFR/VEND/IMPL/SUP/LIC, en de mastersets van requirements. Vanuit hier worden trajecten gevoed.',
         ],
         [
             'q' => 'Wat zijn applicatiesoorten?',
@@ -222,7 +222,7 @@ Eindscore                         <strong style="color:#67e8f9;">3.67</strong>  
             'a' => 'Updates worden periodiek gesynchroniseerd met de Structuur stamdata (handmatig proces — nog niet realtime). Lopende trajecten blijven werken op de op dat moment gekopieerde requirementset, zodat wijzigingen in de doelarchitectuur een lopend selectieproces niet destabiliseren.',
         ],
         [
-            'q' => 'Hoe werken NFR/VEND/LIC/SUP-templates?',
+            'q' => 'Hoe werken NFR/VEND/IMPL/SUP/LIC-templates?',
             'a' => 'Voor deze scopes zijn er platte thema-templates in de Structuur stamdata. Bij het samenstellen van een traject kies je per scope welke thema\'s relevant zijn; alleen geselecteerde thema\'s + hun requirements komen in het traject terecht.',
         ],
         [

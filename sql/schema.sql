@@ -3,11 +3,12 @@
 SET FOREIGN_KEY_CHECKS=0;
 CREATE TABLE `applicatiesoorten` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
-  `label` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
+  `bron` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `sort_order` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uq_app_label` (`label`)
+  UNIQUE KEY `uq_app_name` (`name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -270,7 +271,7 @@ CREATE TABLE `scoring_rondes` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `traject_id` int unsigned NOT NULL,
   `leverancier_id` int unsigned NOT NULL,
-  `scope` enum('FUNC','NFR','VEND','LIC','SUP','DEMO') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `scope` enum('FUNC','NFR','VEND','IMPL','LIC','SUP','DEMO') COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` text COLLATE utf8mb4_unicode_ci,
   `start_date` date DEFAULT NULL,
@@ -308,6 +309,7 @@ CREATE TABLE `subcategorie_templates` (
   `categorie_id` int unsigned NOT NULL,
   `applicatiesoort_id` int unsigned DEFAULT NULL,
   `name` varchar(200) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `bron` varchar(190) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `sort_order` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `idx_subtpl_cat` (`categorie_id`),
@@ -338,7 +340,7 @@ CREATE TABLE `subcategorieen` (
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `traject_deelnemer_scopes` (
   `traject_deelnemer_id` int unsigned NOT NULL,
-  `scope` enum('FUNC','NFR','VEND','LIC','SUP') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `scope` enum('FUNC','NFR','VEND','IMPL','LIC','SUP') COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`traject_deelnemer_id`,`scope`),
   CONSTRAINT `fk_tds_td` FOREIGN KEY (`traject_deelnemer_id`) REFERENCES `traject_deelnemers` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

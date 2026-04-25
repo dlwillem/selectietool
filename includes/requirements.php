@@ -4,7 +4,7 @@
  *
  * Elk requirement hangt aan een subcategorie (per traject). Code wordt
  * automatisch gegenereerd per traject-per-hoofdcategorie:
- *   FUNC → FR-001, NFR → NFR-001, VEND → VEND-001, LIC → LIC-001, SUP → SUP-001
+ *   FUNC → FR-001, NFR → NFR-001, VEND → VEND-001, IMPL → IMPL-001, LIC → LIC-001, SUP → SUP-001
  * Type: 'eis' | 'wens' | 'ko' (knock-out).
  */
 
@@ -17,6 +17,7 @@ const REQUIREMENT_CODE_PREFIX = [
     'FUNC' => 'FR',
     'NFR'  => 'NFR',
     'VEND' => 'VEND',
+    'IMPL' => 'IMPL',
     'LIC'  => 'LIC',
     'SUP'  => 'SUP',
 ];
@@ -30,6 +31,7 @@ const REQUIREMENT_CAT_STYLE = [
     'FUNC' => ['icon' => 'clipboard', 'color' => 'indigo'],
     'NFR'  => ['icon' => 'sliders',   'color' => 'amber'],
     'VEND' => ['icon' => 'package',   'color' => 'green'],
+    'IMPL' => ['icon' => 'tool',      'color' => 'cyan'],
     'LIC'  => ['icon' => 'file-text', 'color' => 'red'],
     'SUP'  => ['icon' => 'bell',      'color' => 'gray'],
 ];
@@ -179,7 +181,7 @@ function requirement_subcats_for_traject(int $trajectId): array {
  */
 function requirements_list(int $trajectId, array $filters = []): array {
     $sql = 'SELECT r.*, s.name AS sub_name, c.code AS cat_code, c.name AS cat_name,
-                   a.label AS app_label, a.description AS app_description
+                   a.name AS app_name, a.description AS app_description
               FROM requirements r
               JOIN subcategorieen s ON s.id = r.subcategorie_id
               JOIN categorieen    c ON c.id = s.categorie_id
