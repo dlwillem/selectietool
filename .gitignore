@@ -20,6 +20,10 @@ export/*.zip
 data/*.sqlite
 data/*.db
 
+# ─── Demo-seed (lokaal genereerbaar, niet in repo) ───────────────────────────
+data/seed/demo.xlsx
+data/seed/~$*.xlsx
+
 # ─── Editor & OS troep ───────────────────────────────────────────────────────
 .DS_Store
 __MACOSX/

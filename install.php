@@ -126,11 +126,19 @@ function wiz_encrypt(string $plain): string {
 // ── Lock check ─────────────────────────────────────────────────────────
 // Auto-create minimale .env als hij nog ontbreekt (eerste upload).
 if (!is_file(wiz_env_path())) {
-    $autoBase = rtrim(((($_SERVER['HTTPS'] ?? '') === 'on' ? 'https' : 'http')
-        . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')), '/');
+    // Bouw APP_BASE_URL inclusief eventueel sub-pad waar de app onder draait.
+    // SCRIPT_NAME is bv. "/st2/st/install.php" → strip "/install.php" zodat
+    // de app-root over blijft. Bij een document-root-install is dit ''.
+    $scriptName = (string)($_SERVER['SCRIPT_NAME'] ?? '');
+    $appPath    = preg_replace('~/install\.php$~', '', $scriptName) ?? '';
+    $appPath    = rtrim($appPath, '/');
+    $scheme     = (($_SERVER['HTTPS'] ?? '') === 'on') ? 'https' : 'http';
+    $autoBase   = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $appPath;
     @file_put_contents(wiz_env_path(),
         "APP_ENV=production\nAPP_BASE_URL=$autoBase\nAPP_KEY=\n", LOCK_EX);
-    // Herlaad env zodat env() de nieuwe waarden ziet.
+    // Herlaad env zodat env() de nieuwe waarden ziet. We willen de loader-IIFE
+    // wèl opnieuw draaien (om de zojuist weggeschreven .env in te lezen), maar
+    // niet de env()-functie opnieuw definiëren — vandaar de guard in env.php.
     require __DIR__ . '/config/env.php';
 }
 

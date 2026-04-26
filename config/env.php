@@ -42,8 +42,10 @@ if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
     }
 })();
 
-function env(string $key, ?string $default = null): ?string {
-    $v = getenv($key);
-    if ($v === false || $v === '') return $default;
-    return $v;
+if (!function_exists('env')) {
+    function env(string $key, ?string $default = null): ?string {
+        $v = getenv($key);
+        if ($v === false || $v === '') return $default;
+        return $v;
+    }
 }
