@@ -8,11 +8,11 @@ require_once __DIR__ . '/includes/bootstrap.php';
 try {
     $hasUsers = db_value('SELECT COUNT(*) FROM users');
 } catch (Throwable $e) {
-    redirect('install/install.php');
+    redirect('install.php');
 }
 
 if (empty($hasUsers)) {
-    redirect('install/install.php');
+    redirect('install.php');
 }
 
 if (is_logged_in()) {

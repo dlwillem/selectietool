@@ -33,6 +33,6 @@
 
 AddDefaultCharset UTF-8
 
-# Pas het pad aan aan jouw installatie. Op root-domein: /pages/404.php.
-# Onder een submap (bijv. MAMP /st/): /st/pages/404.php.
-ErrorDocument 404 /st/pages/404.php
+# 404-pagina; relatief pad werkt zowel op root als onder een submap
+# (MAMP /st/, /selectietooltest/st/, etc.).
+ErrorDocument 404 pages/404.php

@@ -20,8 +20,17 @@ meerdere deelnemers, weging, leveranciers-invulportaal en rapportage.
    ```
    https://jouw-domein.tld/install.php
    ```
-   De wizard maakt zelf `.env` aan als die nog ontbreekt en doorloopt zes
-   stappen: DB-verbinding → schema → admin-account → branding → mail → klaar.
+   De wizard maakt zelf `.env` aan als die nog ontbreekt en doorloopt zeven
+   stappen: DB-verbinding → schema → seed-data → admin-account → branding →
+   mail → klaar.
+
+   **Seed-data (stap 3)** — drie opties:
+   - *Lege database* (standaard).
+   - *Seed laden* — vereist `data/seed/structuur.xlsx` (App soorten,
+     subcategorieën per scope, DEMO-vragen).
+   - *Seed + demo laden* — bovenop seed ook `data/seed/demo.xlsx`
+     (één voorbeeldtraject met leveranciers + requirements). Vereist beide
+     bestanden; opties die niet beschikbaar zijn worden disabled getoond.
 3. **Na succes: verwijder `install.php` én de map `sql/` van je host.** Ook
    als je het vergeet gaat de wizard automatisch op slot (via
    `settings.installed_at` + aanwezigheid van admin), maar verwijderen is de
@@ -35,7 +44,7 @@ worden ingevoerd.
 > **Veiligheidsnotitie:** tussen de upload en de eerste installatie is er een
 > klein window waarin iedereen die `install.php` raadt de app zou kunnen
 > configureren. Voer de installatie daarom meteen na de upload uit en
-> verwijder `install.php` direct na stap 6.
+> verwijder `install.php` direct na stap 7.
 
 ## Na installatie
 
@@ -83,11 +92,16 @@ Out-of-the-box ingebouwd:
 
 ## Rollen
 
-| Rol          | Rechten                                                       |
-|--------------|---------------------------------------------------------------|
-| `architect`  | Alles: gebruikers, trajecten, requirements, scoring, audit    |
-| `key_user`   | Trajecten/requirements/scoring beheren, geen gebruikersbeheer |
-| `management` | Leesrechten op rapportage, geen mutaties                      |
+`architect` is de admin-rol; de tool kent geen aparte `admin`. De volledige,
+live autorisatiematrix is bereikbaar via Instellingen → Gebruikers en wordt
+rechtstreeks uit `includes/authz.php` gegenereerd.
+
+| Rol                | Rechten                                                                 |
+|--------------------|-------------------------------------------------------------------------|
+| `architect`        | Super-user: alles — gebruikers, trajecten, Structuur stamdata, audit    |
+| `business_owner`   | Binnen toegewezen trajecten: requirements, leveranciers, weging, scores |
+| `business_analist` | Binnen toegewezen trajecten: requirements onderhouden, scores invullen  |
+| `key_user`         | Read-only inzage in toegewezen trajecten + scores invullen              |
 
 ## Scoringsformule
 
@@ -140,7 +154,7 @@ pages/         publieke routes (flat, geen router)
 templates/     layout, sidebar, auth-layout
 public/        health.php, statische assets
 sql/           schema-dump (alleen gebruikt door install.php)
-data/          seed-data voor applicatiesoorten (ingeladen bij install)
+data/seed/     structuur.xlsx + demo.xlsx voor de install-wizard (stap 3)
 uploads/       logo, favicon en leveranciersbijlagen (schrijfbaar)
 logs/          PHP-fouten + mail-log (schrijfbaar)
 vendor/        Composer-dependencies (niet in git)
