@@ -20,8 +20,7 @@ export/*.zip
 data/*.sqlite
 data/*.db
 
-# ─── Demo-seed (lokaal genereerbaar, niet in repo) ───────────────────────────
-data/seed/demo.xlsx
+# ─── Excel lock-files (Office maakt deze aan zolang een bestand open is) ────
 data/seed/~$*.xlsx
 
 # ─── Editor & OS troep ───────────────────────────────────────────────────────
