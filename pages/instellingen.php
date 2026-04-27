@@ -187,7 +187,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } catch (Throwable $e) {
         flash_set('error', $e->getMessage());
     }
-    redirect('pages/instellingen.php');
+    // Blijf op de tab waar de actie vandaan kwam (anders valt 'ie terug
+    // naar de default 'users' en raakt de gebruiker context kwijt).
+    $tabByAction = [
+        'create'     => 'users',
+        'branding_'  => 'branding',
+        'mail_'      => 'mail',
+        'structure_' => 'structure',
+        'app_'       => 'app',
+    ];
+    $backTab = 'users';
+    foreach ($tabByAction as $prefix => $t) {
+        if ($action === $prefix || str_starts_with($action, $prefix)) { $backTab = $t; break; }
+    }
+    redirect('pages/instellingen.php?tab=' . $backTab);
 }
 
 // Tabs: branding, users, mail, structure, app — default 'users'
