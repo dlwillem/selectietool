@@ -34,6 +34,11 @@ $flashes = flash_pull();
     <div class="main-col">
       <main class="content">
         <div class="content-wrap pfade">
+          <?php if (is_demo_mode()): ?>
+            <div class="flash" style="background:#fff8db;border:1px solid #f1d97a;color:#5a4500;">
+              <strong>Demo-omgeving.</strong> Dit is een publieke testdrive — wijzigingen kunnen op elk moment worden teruggezet en gevoelige instellingen (branding, mail, gebruikersbeheer, structuur-upload) zijn uitgeschakeld.
+            </div>
+          <?php endif; ?>
           <?php foreach ($flashes as $f): ?>
             <div class="flash <?= h($f['type']) ?>"><?= h($f['message']) ?></div>
           <?php endforeach; ?>

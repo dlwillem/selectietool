@@ -10,6 +10,20 @@
 if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 /**
+ * Demo-modus voor de testdrive-omgeving (publieke "speeltuin").
+ * Geactiveerd via APP_MODE=demo in .env.
+ *
+ * Effect:
+ *   - Gevoelige settings-tabs (Branding, Mail, Audit) zijn verborgen.
+ *   - Destructieve acties (Wipe, Users-CRUD, Structure upload) zijn
+ *     server-side geblokkeerd, ook voor architecten.
+ *   - In de UI verschijnt een gele banner ter waarschuwing.
+ */
+function is_demo_mode(): bool {
+    return strtolower((string)env('APP_MODE', 'normal')) === 'demo';
+}
+
+/**
  * Capabilities met een user-vriendelijk label. Het label wordt gebruikt
  * in de FAQ-matrix en moet kort Nederlands zijn.
  */

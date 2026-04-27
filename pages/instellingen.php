@@ -204,8 +204,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Tabs: branding, users, mail, structure, app — default 'users'
+// In demo-modus zijn Branding en Mail volledig verborgen — testers hebben
+// daar niets te zoeken, en SMTP-creds horen niet zichtbaar te zijn.
+$visibleTabs = is_demo_mode()
+    ? ['users', 'structure', 'app']
+    : ['branding', 'users', 'mail', 'structure', 'app'];
 $tab = input_str('tab');
-if (!in_array($tab, ['branding', 'users', 'mail', 'structure', 'app'], true)) $tab = 'users';
+if (!in_array($tab, $visibleTabs, true)) $tab = 'users';
 
 $users = users_list();
 
@@ -299,13 +304,14 @@ $bodyRenderer = function () use ($users, $tab) { ?>
   </div>
 
   <?php
-    $tabs = [
+    $allTabs = [
       'branding'  => ['title' => 'Branding',                      'pill' => 'cyan'],
       'users'     => ['title' => 'Gebruikers en autorisatiematrix', 'pill' => 'indigo'],
       'mail'      => ['title' => 'Mail-configuratie',             'pill' => 'amber'],
       'structure' => ['title' => 'Structuur',                     'pill' => 'green'],
       'app'       => ['title' => 'Applicatie',                    'pill' => 'gray'],
     ];
+    $tabs = array_intersect_key($allTabs, array_flip($visibleTabs));
   ?>
 
   <div class="repo-card">
@@ -434,9 +440,11 @@ $bodyRenderer = function () use ($users, $tab) { ?>
             <option value="0">Inactief</option>
           </select>
           <span class="count" id="users-count"><?= count($users) ?> gebruiker<?= count($users) === 1 ? '' : 's' ?></span>
-          <button type="button" class="rb primary" onclick="document.getElementById('new-user-modal').classList.add('open')">
-            <?= icon('plus', 14) ?> Nieuwe gebruiker
-          </button>
+          <?php if (!is_demo_mode()): ?>
+            <button type="button" class="rb primary" onclick="document.getElementById('new-user-modal').classList.add('open')">
+              <?= icon('plus', 14) ?> Nieuwe gebruiker
+            </button>
+          <?php endif; ?>
         </div>
       </div>
       <div class="repo-card-body">
@@ -689,6 +697,12 @@ $bodyRenderer = function () use ($users, $tab) { ?>
           </div>
         </div>
 
+        <?php if (is_demo_mode()): ?>
+          <div class="repo-section">
+            <h3>Uploaden &amp; Wissen</h3>
+            <p class="lead muted">In de demo-omgeving is wijzigen van de structuur uitgeschakeld. Download is wel beschikbaar.</p>
+          </div>
+        <?php else: ?>
         <div class="repo-section">
           <h3>Uploaden</h3>
           <?php if (!$isEmpty): ?>
@@ -731,6 +745,7 @@ $bodyRenderer = function () use ($users, $tab) { ?>
             </form>
           <?php endif; ?>
         </div>
+        <?php endif; /* !is_demo_mode() */ ?>
       </div>
 
     <?php elseif ($tab === 'app'): ?>
