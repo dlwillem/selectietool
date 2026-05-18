@@ -8,10 +8,12 @@
   window.APP = window.APP || {};
   window.APP.csrfToken = meta ? meta.content : '';
 
-  // Klikbare tabelrijen: <tr class="row-link" data-href="/url">…</tr>
-  // Cellen met [data-no-rowlink] zijn uitgesloten, net als interactieve elementen.
+  // Klikbare rijen: elk element met class "row-link" + data-href="/url".
+  // Werkt op zowel <tr> (tabellen) als <div> (card/grid-lijsten zoals
+  // requirements.php). Cellen met [data-no-rowlink] zijn uitgesloten,
+  // net als interactieve elementen.
   document.addEventListener('click', function (e) {
-    const tr = e.target.closest('tr.row-link');
+    const tr = e.target.closest('.row-link');
     if (!tr) return;
     if (e.target.closest('[data-no-rowlink]')) return;
     if (e.target.closest('a,button,form,input,textarea,select,label')) return;

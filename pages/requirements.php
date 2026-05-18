@@ -296,6 +296,9 @@ $bodyRenderer = function () use (
                 <span class="req-moscow<?= $isKO ? ' ko' : '' ?>"><?= h($mLabel) ?></span>
                 <code class="req-code" title="<?= h($r['code']) ?>"><?= h($r['code']) ?></code>
                 <?php if ($canEdit): ?>
+                  <a href="<?= h($href) ?>" class="req-edit-btn" title="Bewerken">
+                    <?= icon('edit', 14) ?>
+                  </a>
                   <form method="post" class="req-del" onsubmit="return confirm('Requirement <?= h($r['code']) ?> verwijderen?')">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="delete">
@@ -419,14 +422,16 @@ $bodyRenderer = function () use (
     }
 
     .req-del { margin:0; display:inline-flex; }
-    .req-del-btn {
+    .req-del-btn, .req-edit-btn {
       border:none; background:transparent; cursor:pointer;
       color:#d1d5db; padding:4px; border-radius:6px;
       opacity:.35; transition: opacity .12s, color .12s, background .12s;
-      display:inline-flex;
+      display:inline-flex; text-decoration:none;
     }
     .req-row:hover .req-del-btn { opacity:1; color: var(--del, #ef4444); }
     .req-del-btn:hover { background: rgba(239,68,68,.08); }
+    .req-row:hover .req-edit-btn { opacity:1; color: #2563eb; }
+    .req-edit-btn:hover { background: rgba(37,99,235,.08); }
 
     /* Per-categorie "+ Nieuw requirement"-knop in cat-head */
     .req-cat-add {
