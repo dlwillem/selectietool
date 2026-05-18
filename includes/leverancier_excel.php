@@ -272,6 +272,18 @@ function lev_excel_build_instructions(
 
 /**
  * Bouwt één scope-tabblad met banner + headers + datarijen + borders.
+ *
+ * Optioneel: een derde "blauw" blok rechts van het groene "in te vullen"-blok,
+ * voor interne kolommen (interne opmerking + owner). Wordt gebruikt door de
+ * interne requirements-export zodat die er qua look identiek uit ziet.
+ *
+ * Vorm van $blueBlock:
+ *   [
+ *     'banner'  => 'Interne opmerkingen',
+ *     'columns' => ['interne_opmerking' => 'Interne opmerking', 'owner' => 'Bespreken met'],
+ *     'widths'  => ['interne_opmerking' => 40, 'owner' => 22],
+ *   ]
+ * En $blueValuesByReq: [requirement_id => ['interne_opmerking' => '...', 'owner' => '...']]
  */
 function lev_excel_build_sheet(
     \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $s,
@@ -279,7 +291,9 @@ function lev_excel_build_sheet(
     array $reqs,
     array $aByReq,
     string $lang = 'nl',
-    array $subNames = []
+    array $subNames = [],
+    ?array $blueBlock = null,
+    array $blueValuesByReq = []
 ): void {
     $t       = lev_excel_t($lang);
     $headers = $t['headers'];
@@ -292,10 +306,14 @@ function lev_excel_build_sheet(
     $pinkLt = 'F7D4E3'; // lichtere tint voor zebra
     $green  = '3AA55A';
     $greenLt= 'D9F0DE';
+    $blue   = '2563EB';
+    $blueLt = 'DBEAFE';
     $white  = 'FFFFFF';
     $borderGray = 'BBBBBB';
 
-    $cols = LEV_EXCEL_COLUMNS;
+    // Bouw de kolom-volgorde: standaard (LEV_EXCEL_COLUMNS) + eventueel blauw.
+    $blueCols = $blueBlock['columns'] ?? [];
+    $cols = array_merge(LEV_EXCEL_COLUMNS, array_keys($blueCols));
     $letters = [];
     foreach ($cols as $i => $_) {
         $letters[] = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
@@ -305,9 +323,12 @@ function lev_excel_build_sheet(
     // Linker-blok: nr t/m moscow
     $leftFirst  = $L['nr'];
     $leftLast   = $L['moscow'];
-    // Rechter-blok: standaard + toelichting
+    // Rechter-blok (groen): standaard + toelichting
     $rightFirst = $L['standaard'];
-    $rightLast  = end($letters);
+    $rightLast  = $L['toelichting'];
+    // Optioneel derde blok (blauw)
+    $blueFirst  = $blueCols ? $L[array_key_first($blueCols)] : null;
+    $blueLast   = $blueCols ? $L[array_key_last($blueCols)]  : null;
 
     // ── Rij 1: banner ──────────────────────────────────────────────────────
     $s->setCellValue($leftFirst . '1', $titles[$scope] ?? $scope);
@@ -327,12 +348,24 @@ function lev_excel_build_sheet(
         'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER,
                         'vertical'   => Alignment::VERTICAL_CENTER],
     ]);
+
+    if ($blueFirst) {
+        $s->setCellValue($blueFirst . '1', (string)($blueBlock['banner'] ?? ''));
+        if ($blueFirst !== $blueLast) $s->mergeCells($blueFirst . '1:' . $blueLast . '1');
+        $s->getStyle($blueFirst . '1:' . $blueLast . '1')->applyFromArray([
+            'font' => ['bold' => true, 'size' => 14, 'color' => ['rgb' => $white]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $blue]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER,
+                            'vertical'   => Alignment::VERTICAL_CENTER],
+        ]);
+    }
     $s->getRowDimension(1)->setRowHeight(28);
 
     // ── Rij 2: kolomkoppen ─────────────────────────────────────────────────
     foreach ($cols as $i => $code) {
         $cell = $letters[$i] . '2';
-        $s->setCellValue($cell, $headers[$code]);
+        $label = $headers[$code] ?? ($blueCols[$code] ?? $code);
+        $s->setCellValue($cell, $label);
     }
     $s->getStyle($leftFirst . '2:' . $leftLast . '2')->applyFromArray([
         'font' => ['bold' => true, 'color' => ['rgb' => $white]],
@@ -348,6 +381,15 @@ function lev_excel_build_sheet(
                         'vertical'   => Alignment::VERTICAL_CENTER,
                         'wrapText'   => true],
     ]);
+    if ($blueFirst) {
+        $s->getStyle($blueFirst . '2:' . $blueLast . '2')->applyFromArray([
+            'font' => ['bold' => true, 'color' => ['rgb' => $white]],
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $blue]],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER,
+                            'vertical'   => Alignment::VERTICAL_CENTER,
+                            'wrapText'   => true],
+        ]);
+    }
     $s->getRowDimension(2)->setRowHeight(34);
 
     // ── Lege scope: informatieve rij ───────────────────────────────────────
@@ -359,9 +401,10 @@ function lev_excel_build_sheet(
             $label = $lang === 'en' ? 'Themes prepared' : 'Thema\'s aangemaakt';
             $msg .= "\n" . $label . ': ' . implode(' · ', $subNames);
         }
+        $emptyLast = $blueLast ?: $rightLast;
         $s->setCellValue($leftFirst . '3', $msg);
-        $s->mergeCells($leftFirst . '3:' . $rightLast . '3');
-        $s->getStyle($leftFirst . '3:' . $rightLast . '3')->applyFromArray([
+        $s->mergeCells($leftFirst . '3:' . $emptyLast . '3');
+        $s->getStyle($leftFirst . '3:' . $emptyLast . '3')->applyFromArray([
             'font' => ['italic' => true, 'color' => ['rgb' => '666666']],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F5F5F5']],
@@ -373,7 +416,10 @@ function lev_excel_build_sheet(
             'omschrijving' => 70, 'fase' => 8, 'moscow' => 12,
             'standaard' => 20, 'toelichting' => 40,
         ];
-        foreach ($widths as $cc => $w) $s->getColumnDimension($L[$cc])->setWidth($w);
+        foreach (($blueBlock['widths'] ?? []) as $cc => $w) $widths[$cc] = $w;
+        foreach ($widths as $cc => $w) {
+            if (isset($L[$cc])) $s->getColumnDimension($L[$cc])->setWidth($w);
+        }
         $s->freezePane('A3');
         return;
     }
@@ -400,6 +446,11 @@ function lev_excel_build_sheet(
             'standaard'    => $std,
             'toelichting'  => $ans['answer_text'] ?? '',
         ];
+        // Blauwe blok (intern, optioneel)
+        $blueVals = $blueValuesByReq[(int)$req['id']] ?? [];
+        foreach (array_keys($blueCols) as $bc) {
+            $values[$bc] = $blueVals[$bc] ?? '';
+        }
         foreach ($values as $code => $v) {
             // Fase als integer als hij gevuld is, anders leeg.
             if ($code === 'fase' && $v !== '' && $v !== null) {
@@ -417,8 +468,9 @@ function lev_excel_build_sheet(
     $lastRow = $rowNr - 1;
 
     if ($lastRow >= 3) {
-        // Border rond alle datacellen
-        $range = $leftFirst . '3:' . $rightLast . $lastRow;
+        // Border rond alle datacellen (incl. eventueel blauw blok)
+        $dataLast = $blueLast ?: $rightLast;
+        $range = $leftFirst . '3:' . $dataLast . $lastRow;
         $s->getStyle($range)->applyFromArray([
             'borders' => [
                 'allBorders' => ['borderStyle' => Border::BORDER_THIN,
@@ -427,14 +479,16 @@ function lev_excel_build_sheet(
             'alignment' => ['vertical' => Alignment::VERTICAL_TOP,
                             'wrapText' => true],
         ]);
-        // Lichtroze accent in linker-datablok (heel subtiel) — optioneel uit:
-        // $s->getStyle($leftFirst . '3:' . $leftLast . $lastRow)->applyFromArray([
-        //     'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFF7FB']],
-        // ]);
         // Lichtgroen accent in rechter-datablok (in te vullen)
         $s->getStyle($rightFirst . '3:' . $rightLast . $lastRow)->applyFromArray([
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $greenLt]],
         ]);
+        // Lichtblauw accent in blauw datablok
+        if ($blueFirst) {
+            $s->getStyle($blueFirst . '3:' . $blueLast . $lastRow)->applyFromArray([
+                'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $blueLt]],
+            ]);
+        }
         // MoSCoW, Nr, Fase en Standaard gecentreerd
         foreach (['nr', 'fase', 'moscow', 'standaard'] as $cc) {
             $s->getStyle($L[$cc] . '3:' . $L[$cc] . $lastRow)
@@ -465,8 +519,11 @@ function lev_excel_build_sheet(
         'omschrijving' => 70, 'fase' => 8, 'moscow' => 12,
         'standaard' => 20, 'toelichting' => 40,
     ];
+    foreach (($blueBlock['widths'] ?? []) as $cc => $w) {
+        $widths[$cc] = $w;
+    }
     foreach ($widths as $cc => $w) {
-        $s->getColumnDimension($L[$cc])->setWidth($w);
+        if (isset($L[$cc])) $s->getColumnDimension($L[$cc])->setWidth($w);
     }
 
     // Freeze headers

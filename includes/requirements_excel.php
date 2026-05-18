@@ -22,6 +22,7 @@
 if (!defined('APP_BOOT')) { http_response_code(403); exit('Forbidden'); }
 
 require_once __DIR__ . '/requirements.php';
+require_once __DIR__ . '/leverancier_excel.php';
 
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx as XlsxWriter;
@@ -31,12 +32,19 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 const REQ_EXCEL_SCOPES = ['FUNC', 'NFR', 'VEND', 'IMPL', 'SUP', 'LIC'];
 
-const REQ_EXCEL_COLUMNS_FUNC  = ['code', 'app_soort', 'subcategorie', 'titel', 'omschrijving', 'fase', 'type', 'owner', 'interne_opmerking'];
-const REQ_EXCEL_COLUMNS_OTHER = ['code', 'subcategorie', 'titel', 'omschrijving', 'fase', 'type', 'owner', 'interne_opmerking'];
-
-function _req_excel_cols_for(string $scope): array {
-    return $scope === 'FUNC' ? REQ_EXCEL_COLUMNS_FUNC : REQ_EXCEL_COLUMNS_OTHER;
-}
+/**
+ * Blauwe-blok configuratie voor de interne export. Wordt door
+ * lev_excel_build_sheet() opgepikt om naast het groene "in te vullen"-blok
+ * een blauw "intern"-blok te tekenen met owner + interne opmerking.
+ */
+const REQ_INTERNAL_BLUE_BLOCK = [
+    'banner'  => 'Interne opmerkingen',
+    'columns' => [
+        'interne_opmerking' => 'Interne opmerking',
+        'owner'             => 'Bespreken met',
+    ],
+    'widths'  => ['interne_opmerking' => 40, 'owner' => 22],
+];
 
 /**
  * Download .xlsx met alle requirements van dit traject — round-trip-importeerbaar.
@@ -45,145 +53,159 @@ function requirements_excel_export(int $trajectId, string $filename): void {
     $traject = db_one('SELECT name FROM trajecten WHERE id = :id', [':id' => $trajectId]);
     if (!$traject) { http_response_code(404); exit('Traject niet gevonden.'); }
 
+    // Volle dataset incl. cat/sub/app namen (voor het Domein-veld) +
+    // interne velden voor het blauwe blok.
     $reqs = db_all(
-        'SELECT r.code, r.title, r.description, r.type, r.fase, r.internal_note,
+        'SELECT r.id, r.code, r.title, r.description, r.type, r.fase, r.internal_note,
                 s.name AS sub_name,
                 a.name AS app_name,
                 td.name AS owner_name,
-                c.code AS cat_code, c.sort_order AS cat_order,
-                s.sort_order AS sub_order, r.sort_order AS req_order
+                c.name AS cat_name, c.code AS cat_code,
+                c.sort_order AS cat_order, s.sort_order AS sub_order,
+                r.sort_order AS req_order
            FROM requirements r
            JOIN subcategorieen s ON s.id = r.subcategorie_id
            JOIN categorieen    c ON c.id = s.categorie_id
            LEFT JOIN applicatiesoorten   a  ON a.id  = s.applicatiesoort_id
            LEFT JOIN traject_deelnemers  td ON td.id = r.owner_deelnemer_id
           WHERE r.traject_id = :t
-          ORDER BY c.sort_order, a.name, s.sort_order, r.sort_order, r.id',
+          ORDER BY c.sort_order, s.sort_order, r.sort_order, r.id',
         [':t' => $trajectId]
     );
     $byScope = [];
-    foreach ($reqs as $r) $byScope[$r['cat_code']][] = $r;
+    $blueValuesByReq = [];
+    foreach ($reqs as $r) {
+        $byScope[$r['cat_code']][] = $r;
+        $blueValuesByReq[(int)$r['id']] = [
+            'interne_opmerking' => (string)($r['internal_note'] ?? ''),
+            'owner'             => (string)($r['owner_name'] ?? ''),
+        ];
+    }
+
+    // Subcategorie-namen per scope (voor lege scopes — net als bij leverancier-export)
+    $subRows = db_all(
+        'SELECT s.id, s.name, c.code AS cat_code
+           FROM subcategorieen s
+           JOIN categorieen c ON c.id = s.categorie_id
+          WHERE s.traject_id = :t
+          ORDER BY c.sort_order, s.sort_order, s.id',
+        [':t' => $trajectId]
+    );
+    $subsByScope = [];
+    foreach ($subRows as $sr) $subsByScope[$sr['cat_code']][] = $sr['name'];
 
     $ss = new Spreadsheet();
     $ss->removeSheetByIndex(0);
+
+    // Toelichting-tab (instructies, lijst van subcategoriën etc.)
+    $info = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($ss, 'Toelichting');
+    $ss->addSheet($info);
+    _req_excel_build_info($info, $trajectId, (string)$traject['name']);
+
+    // Per scope een tab via de gedeelde sheet-renderer.
     foreach (REQ_EXCEL_SCOPES as $scope) {
-        $sheet = $ss->createSheet();
-        $sheet->setTitle($scope);
-        _req_excel_build_sheet($sheet, $scope, $byScope[$scope] ?? []);
+        $rows = $byScope[$scope] ?? [];
+        $sheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($ss, $scope);
+        $ss->addSheet($sheet);
+        lev_excel_build_sheet(
+            $sheet,
+            $scope,
+            $rows,                              // requirements
+            [],                                 // aByReq: leeg (groene blok blijft leeg)
+            'nl',
+            $subsByScope[$scope] ?? [],
+            REQ_INTERNAL_BLUE_BLOCK,
+            $blueValuesByReq
+        );
     }
-    $ss->setActiveSheetIndex(0);
+    $ss->setActiveSheetIndexByName('Toelichting');
     requirements_excel_send($ss, $filename);
 }
 
 /**
- * Download .xlsx template (lege scope-sheets + toelichting).
+ * Toelichting-tab: instructies + lijst beschikbare subcategorieën.
  */
-function requirements_excel_template(int $trajectId, string $filename): void {
-    $ss = new Spreadsheet();
-    $ss->removeSheetByIndex(0);
-
-    // Toelichting-tab
-    $info = $ss->createSheet();
-    $info->setTitle('Toelichting');
-    $info->fromArray([
-        ['Requirements-template'],
+function _req_excel_build_info(
+    \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $s,
+    int $trajectId,
+    string $trajectName
+): void {
+    $s->fromArray([
+        ['Requirements-export — ' . $trajectName],
         [''],
-        ['Eén tabblad per scope. Vul de kolommen in zoals aangegeven; tabbladnamen, kolomvolgorde en kolomnamen niet wijzigen.'],
+        ['Eén tabblad per scope (FUNC/NFR/VEND/IMPL/SUP/LIC). Layout identiek aan de leverancier-template.'],
         [''],
-        ['code              — leeg laten voor een NIEUW requirement; ingevuld = update op bestaande code in dit traject.'],
-        ['app_soort         — alleen FUNC: naam van de App soort waaronder de subcategorie hangt.'],
-        ['subcategorie      — naam exact zoals in dit traject (FUNC: app service onder de gekozen App soort).'],
-        ['titel             — verplicht.'],
-        ['omschrijving      — optioneel.'],
-        ['fase              — optioneel; integer 1..5.'],
-        ['type              — eis | wens | ko'],
-        ['owner             — optioneel; naam van een deelnemer van dit traject (exact zoals onder Collega\'s).'],
-        ['interne_opmerking — optioneel; niet zichtbaar voor leveranciers.'],
+        ['Voor IMPORT:'],
+        ['  · Tabbladnamen, kolomvolgorde en kolomnamen niet wijzigen.'],
+        ['  · "Nr" leeg → nieuw requirement; ingevuld → update op die code in dit traject.'],
+        ['  · "Domein" formaat: "<hoofdcategorie> → <subcategorie>" — exact zoals dit traject ze kent.'],
+        ['  · "Titel" verplicht. "Omschrijving" optioneel.'],
+        ['  · "Fase" optioneel, integer 1..5.'],
+        ['  · "MoSCoW" verplicht: Must / Should / Knock-out (NL: Must/Should/Knock-out).'],
+        ['  · Groene blok ("Standaard…" en "Toelichting") wordt bij interne import genegeerd.'],
+        ['  · Blauwe blok: "Interne opmerking" tekst; "Bespreken met" = naam van een deelnemer.'],
         [''],
         ['Beschikbare subcategorieën in dit traject (per scope):'],
     ], null, 'A1');
-    $info->getStyle('A1')->getFont()->setBold(true)->setSize(16);
-    $info->getColumnDimension('A')->setWidth(28);
-    $info->getColumnDimension('B')->setWidth(36);
-    $info->getColumnDimension('C')->setWidth(60);
+    $s->getStyle('A1')->getFont()->setBold(true)->setSize(16);
+    $s->getColumnDimension('A')->setWidth(28);
+    $s->getColumnDimension('B')->setWidth(36);
+    $s->getColumnDimension('C')->setWidth(60);
 
-    $row = 14;
-    $info->fromArray([['scope', 'app_soort', 'subcategorie']], null, 'A' . $row);
-    $info->getStyle('A' . $row . ':C' . $row)->getFont()->setBold(true);
+    $row = 18;
+    $s->fromArray([['scope', 'app_soort', 'subcategorie']], null, 'A' . $row);
+    $s->getStyle('A' . $row . ':C' . $row)->getFont()->setBold(true);
     $row++;
     $subs = requirement_subcats_for_traject_with_app($trajectId);
-    foreach ($subs as $s) {
-        $info->fromArray([[$s['cat_code'], (string)($s['app_name'] ?? ''), $s['name']]], null, 'A' . $row++);
+    foreach ($subs as $sub) {
+        $s->fromArray([[$sub['cat_code'], (string)($sub['app_name'] ?? ''), $sub['name']]], null, 'A' . $row++);
     }
-
-    foreach (REQ_EXCEL_SCOPES as $scope) {
-        $sheet = $ss->createSheet();
-        $sheet->setTitle($scope);
-        _req_excel_build_sheet($sheet, $scope, []);
-    }
-
-    $ss->setActiveSheetIndex(0);
-    requirements_excel_send($ss, $filename);
 }
 
-/** Bouw één scope-tabblad: roze headerrij + (optioneel) datarijen. */
-function _req_excel_build_sheet(
-    \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet $sheet,
-    string $scope,
-    array $rows
-): void {
-    $cols = _req_excel_cols_for($scope);
+/**
+ * Download .xlsx template (lege scope-sheets met de drie-blok-layout).
+ * De gebruiker kan rijen toevoegen onder de header-rij.
+ */
+function requirements_excel_template(int $trajectId, string $filename): void {
+    $traject = db_one('SELECT name FROM trajecten WHERE id = :id', [':id' => $trajectId]);
+    if (!$traject) { http_response_code(404); exit('Traject niet gevonden.'); }
 
-    $sheet->fromArray([$cols], null, 'A1');
-    $lastCol = _req_col_letter(count($cols));
-    $sheet->getStyle('A1:' . $lastCol . '1')->applyFromArray([
-        'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'EC4899']],
-        'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT],
-    ]);
+    // Subcategorie-namen per scope (voor de "geen requirements"-melding op lege tabs)
+    $subRows = db_all(
+        'SELECT s.name, c.code AS cat_code
+           FROM subcategorieen s
+           JOIN categorieen c ON c.id = s.categorie_id
+          WHERE s.traject_id = :t
+          ORDER BY c.sort_order, s.sort_order, s.id',
+        [':t' => $trajectId]
+    );
+    $subsByScope = [];
+    foreach ($subRows as $sr) $subsByScope[$sr['cat_code']][] = $sr['name'];
 
-    $widths = [
-        'code'              => 12,
-        'app_soort'         => 26,
-        'subcategorie'      => 28,
-        'titel'             => 36,
-        'omschrijving'      => 60,
-        'fase'              => 8,
-        'type'              => 10,
-        'owner'             => 22,
-        'interne_opmerking' => 40,
-    ];
-    foreach ($cols as $i => $name) {
-        $sheet->getColumnDimensionByColumn($i + 1)->setWidth($widths[$name] ?? 20);
+    $ss = new Spreadsheet();
+    $ss->removeSheetByIndex(0);
+
+    $info = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($ss, 'Toelichting');
+    $ss->addSheet($info);
+    _req_excel_build_info($info, $trajectId, (string)$traject['name']);
+
+    foreach (REQ_EXCEL_SCOPES as $scope) {
+        $sheet = new \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet($ss, $scope);
+        $ss->addSheet($sheet);
+        lev_excel_build_sheet(
+            $sheet,
+            $scope,
+            [],                                 // lege rows
+            [],                                 // aByReq leeg
+            'nl',
+            $subsByScope[$scope] ?? [],
+            REQ_INTERNAL_BLUE_BLOCK,
+            []
+        );
     }
-    $sheet->freezePane('A2');
 
-    $moscow = ['eis' => 'eis', 'wens' => 'wens', 'ko' => 'ko'];
-    $rn = 2;
-    foreach ($rows as $r) {
-        $vals = [];
-        foreach ($cols as $name) {
-            switch ($name) {
-                case 'code':              $vals[] = (string)$r['code']; break;
-                case 'app_soort':         $vals[] = (string)($r['app_name'] ?? ''); break;
-                case 'subcategorie':      $vals[] = (string)$r['sub_name']; break;
-                case 'titel':             $vals[] = (string)$r['title']; break;
-                case 'omschrijving':      $vals[] = (string)($r['description'] ?? ''); break;
-                case 'fase':              $vals[] = $r['fase'] !== null ? (string)(int)$r['fase'] : ''; break;
-                case 'type':              $vals[] = $moscow[$r['type']] ?? $r['type']; break;
-                case 'owner':             $vals[] = (string)($r['owner_name'] ?? ''); break;
-                case 'interne_opmerking': $vals[] = (string)($r['internal_note'] ?? ''); break;
-            }
-        }
-        foreach ($vals as $i => $v) {
-            $sheet->setCellValueExplicit(
-                _req_col_letter($i + 1) . $rn,
-                (string)$v,
-                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
-            );
-        }
-        $rn++;
-    }
+    $ss->setActiveSheetIndexByName('Toelichting');
+    requirements_excel_send($ss, $filename);
 }
 
 /** Subcats met app-soort-info voor de toelichtings-tab + import-lookup. */
@@ -210,15 +232,14 @@ function requirements_excel_send(Spreadsheet $ss, string $filename): void {
     exit;
 }
 
-function _req_col_letter(int $n): string {
-    $s = '';
-    while ($n > 0) { $m = ($n - 1) % 26; $s = chr(65 + $m) . $s; $n = intdiv($n - 1, 26); }
-    return $s;
-}
-
 /**
  * Strict, transactioneel, all-or-nothing import.
- * Leest alle 6 scope-tabbladen; hoofdcategorie wordt afgeleid uit tabnaam.
+ * Leest alle 6 scope-tabbladen in het nieuwe drie-blok-format (zelfde
+ * kolomstructuur als de leverancier-template, met optioneel een blauwe
+ * "Interne opmerkingen"-blok rechts).
+ *
+ * Headers worden gezocht in rij 1..3 (eerste rij met "Nr"); de groene
+ * kolommen "Standaard…" en "Toelichting" worden bij intern-import genegeerd.
  *
  * @return array{ok:bool, created:int, updated:int, errors: string[], rows: int}
  */
@@ -242,20 +263,14 @@ function requirements_excel_import(int $trajectId, string $path): array {
     }
     if ($result['errors']) return $result;
 
-    // Lookup-tabellen
+    // Lookup-tabellen voor subcategorie-resolutie via "Domein" (cat_name → sub_name).
+    // Voor FUNC kunnen sub-namen voorkomen onder meerdere app_soorten — dan
+    // hebben we meerdere id's, en moeten we de import-rij als ambigu markeren.
     $subRows = requirement_subcats_for_traject_with_app($trajectId);
-    // Voor FUNC: (app_soort, subcategorie) → sub_id
-    // Voor andere scopes: (cat_code, subcategorie) → sub_id
-    $funcLookup = []; // app||sub → id
-    $otherLookup = []; // catcode||sub → id
-    foreach ($subRows as $s) {
-        if ($s['cat_code'] === 'FUNC') {
-            $key = mb_strtolower((string)($s['app_name'] ?? '')) . '||' . mb_strtolower($s['name']);
-            $funcLookup[$key] = (int)$s['id'];
-        } else {
-            $key = $s['cat_code'] . '||' . mb_strtolower($s['name']);
-            $otherLookup[$key] = (int)$s['id'];
-        }
+    $subLookup = []; // scope||cat_name_lower||sub_name_lower → [id, ...]
+    foreach ($subRows as $sr) {
+        $key = $sr['cat_code'] . '||' . mb_strtolower((string)$sr['cat_name']) . '||' . mb_strtolower((string)$sr['name']);
+        $subLookup[$key][] = (int)$sr['id'];
     }
 
     // Bestaande codes in dit traject
@@ -274,48 +289,91 @@ function requirements_excel_import(int $trajectId, string $path): array {
     $ownerByName = [];
     foreach ($tdRows as $td) $ownerByName[mb_strtolower(trim((string)$td['name']))] = (int)$td['id'];
 
-    // Per scope-tab: header valideren + rijen verzamelen
+    // MoSCoW-label → enum
+    $moscowMap = [
+        'must' => 'eis', 'eis' => 'eis',
+        'should' => 'wens', 'wens' => 'wens',
+        'knock-out' => 'ko', 'knockout' => 'ko', 'knock out' => 'ko', 'ko' => 'ko',
+    ];
+
+    // Header-aliases (case-insensitive, NL primair)
+    $headerAliases = [
+        'code'              => ['nr', 'no.', 'no', 'number', 'code'],
+        'domein'            => ['domein', 'domain'],
+        'titel'             => ['titel', 'title'],
+        'omschrijving'      => ['omschrijving', 'description'],
+        'fase'              => ['fase', 'phase'],
+        'type'              => ['moscow', 'type'],
+        'interne_opmerking' => ['interne opmerking', 'interne opmerkingen', 'internal note', 'internal comment'],
+        'owner'             => ['bespreken met', 'owner', 'eigenaar'],
+    ];
+
+    // Per scope-tab: header detecteren + rijen verzamelen
     $plan = [];
     foreach (REQ_EXCEL_SCOPES as $scope) {
-        $cols  = _req_excel_cols_for($scope);
         $sheet = $ss->getSheetByName($scope);
         $rows  = $sheet->toArray(null, true, true, false);
         if (!$rows) continue;
 
-        $header = array_map(fn($v) => mb_strtolower(trim((string)$v)), $rows[0]);
-        foreach ($cols as $i => $expected) {
-            if (($header[$i] ?? '') !== $expected) {
-                $result['errors'][] = "Tab '$scope': kolom " . ($i + 1)
-                    . " moet '$expected' heten (gevonden: '" . ($header[$i] ?? '') . "').";
+        // Zoek header-rij (eerste rij waarin "Nr" / "Code" voorkomt) in rij 1..3
+        $headerRow = null;
+        $colByField = [];
+        for ($rn = 0; $rn < min(3, count($rows)); $rn++) {
+            $row = $rows[$rn];
+            $lower = array_map(fn($v) => mb_strtolower(trim((string)$v)), $row);
+            foreach ($lower as $i => $name) {
+                if ($name === '') continue;
+                foreach ($headerAliases as $field => $aliases) {
+                    if (in_array($name, $aliases, true) && !isset($colByField[$field])) {
+                        $colByField[$field] = $i;
+                    }
+                }
             }
+            if (isset($colByField['code'], $colByField['titel'], $colByField['type'])) {
+                $headerRow = $rn;
+                break;
+            }
+            $colByField = [];
+        }
+        if ($headerRow === null) {
+            $result['errors'][] = "Tab '$scope': kolommen 'Nr', 'Titel' en 'MoSCoW' niet gevonden in rij 1-3.";
+            continue;
         }
 
-        for ($idx = 1; $idx < count($rows); $idx++) {
+        for ($idx = $headerRow + 1; $idx < count($rows); $idx++) {
             $raw = $rows[$idx];
-            $allEmpty = true;
-            foreach ($raw as $v) { if (trim((string)$v) !== '') { $allEmpty = false; break; } }
-            if ($allEmpty) continue;
 
             $rowNo = $idx + 1;
-            $assoc = [];
-            foreach ($cols as $i => $name) $assoc[$name] = trim((string)($raw[$i] ?? ''));
+            $get = fn($field) => isset($colByField[$field])
+                ? trim((string)($raw[$colByField[$field]] ?? '')) : '';
+
+            // Beschouw als data-rij alleen als minimaal Titel én MoSCoW gezet
+            // zijn. Voorkomt dat de merged "Geen requirements gedefinieerd…"-
+            // melding op lege scope-tabs als data wordt gelezen (die staat
+            // alleen in kolom A en triggert anders een fake "Nr"-waarde).
+            if ($get('titel') === '' && $get('type') === '') continue;
+
             $result['rows']++;
 
-            $code  = $assoc['code'];
-            $sub   = $assoc['subcategorie'];
-            $title = $assoc['titel'];
-            $desc  = $assoc['omschrijving'];
-            $type  = mb_strtolower($assoc['type']);
-            $app   = $assoc['app_soort'] ?? '';
-            $fase  = $assoc['fase'] ?? '';
-            $owner = $assoc['owner'] ?? '';
-            $note  = $assoc['interne_opmerking'] ?? '';
+            $code   = $get('code');
+            $domein = $get('domein');
+            $title  = $get('titel');
+            $desc   = $get('omschrijving');
+            $fase   = $get('fase');
+            $type   = mb_strtolower($get('type'));
+            $note   = $get('interne_opmerking');
+            $owner  = $get('owner');
 
             $rowErr = [];
             if ($title === '') $rowErr[] = 'titel leeg';
-            if (!in_array($type, REQUIREMENT_TYPES, true)) $rowErr[] = "type '$type' ongeldig";
 
-            // Fase: optioneel, integer 1..5 (REQUIREMENT_FASES)
+            // MoSCoW: vertaal Must/Should/Knock-out → eis/wens/ko
+            $typeNorm = $moscowMap[$type] ?? null;
+            if ($typeNorm === null) {
+                $rowErr[] = "MoSCoW '$type' ongeldig (Must/Should/Knock-out)";
+            }
+
+            // Fase: optioneel, integer 1..5
             $faseVal = null;
             if ($fase !== '') {
                 $fi = (int)$fase;
@@ -331,28 +389,29 @@ function requirements_excel_import(int $trajectId, string $path): array {
             if ($owner !== '') {
                 $ownerId = $ownerByName[mb_strtolower(trim($owner))] ?? null;
                 if ($ownerId === null) {
-                    $rowErr[] = "owner '$owner' is geen deelnemer van dit traject";
+                    $rowErr[] = "Bespreken met / owner '$owner' is geen deelnemer van dit traject";
                 }
             }
 
+            // Subcategorie afleiden uit "Domein" — formaat "<cat_name> → <sub_name>"
             $subId = null;
-            if ($scope === 'FUNC') {
-                if ($app === '') $rowErr[] = 'app_soort leeg';
-                if ($sub === '') $rowErr[] = 'subcategorie leeg';
-                if ($app !== '' && $sub !== '') {
-                    $key = mb_strtolower($app) . '||' . mb_strtolower($sub);
-                    $subId = $funcLookup[$key] ?? null;
-                    if ($subId === null) {
-                        $rowErr[] = "onbekende combinatie app_soort '$app' + subcategorie '$sub'";
-                    }
-                }
+            if ($domein === '') {
+                $rowErr[] = 'Domein leeg';
             } else {
-                if ($sub === '') $rowErr[] = 'subcategorie leeg';
-                if ($sub !== '') {
-                    $key = $scope . '||' . mb_strtolower($sub);
-                    $subId = $otherLookup[$key] ?? null;
-                    if ($subId === null) {
-                        $rowErr[] = "subcategorie '$sub' onbekend binnen $scope";
+                // Splits op " → " (pijl met spaties) — fallback op " -> " of " | "
+                $parts = preg_split('/\s*(?:→|->|\|)\s*/u', $domein, 2);
+                if (count($parts) !== 2) {
+                    $rowErr[] = "Domein '$domein' niet in formaat 'Hoofdcategorie → Subcategorie'";
+                } else {
+                    [$catN, $subN] = array_map('trim', $parts);
+                    $key = $scope . '||' . mb_strtolower($catN) . '||' . mb_strtolower($subN);
+                    $matches = $subLookup[$key] ?? [];
+                    if (count($matches) === 0) {
+                        $rowErr[] = "subcategorie '$subN' onbekend binnen $scope/$catN";
+                    } elseif (count($matches) > 1) {
+                        $rowErr[] = "subcategorie '$subN' is dubbelzinnig (komt voor onder meerdere App soorten in $scope); hernoem unique";
+                    } else {
+                        $subId = $matches[0];
                     }
                 }
             }
@@ -360,7 +419,7 @@ function requirements_excel_import(int $trajectId, string $path): array {
             $reqId = null;
             if ($code !== '') {
                 $reqId = $existingByCode[mb_strtoupper($code)] ?? null;
-                if ($reqId === null) $rowErr[] = "code '$code' bestaat niet in dit traject";
+                if ($reqId === null) $rowErr[] = "Nr '$code' bestaat niet in dit traject";
             }
 
             if ($rowErr) {
@@ -372,7 +431,7 @@ function requirements_excel_import(int $trajectId, string $path): array {
                 'sub'      => $subId,
                 'title'    => $title,
                 'desc'     => $desc,
-                'type'     => $type,
+                'type'     => $typeNorm,
                 'fase'     => $faseVal,
                 'owner_id' => $ownerId,
                 'note'     => $note !== '' ? $note : null,
