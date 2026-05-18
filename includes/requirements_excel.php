@@ -31,8 +31,8 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 const REQ_EXCEL_SCOPES = ['FUNC', 'NFR', 'VEND', 'IMPL', 'SUP', 'LIC'];
 
-const REQ_EXCEL_COLUMNS_FUNC  = ['code', 'app_soort', 'subcategorie', 'titel', 'omschrijving', 'type'];
-const REQ_EXCEL_COLUMNS_OTHER = ['code', 'subcategorie', 'titel', 'omschrijving', 'type'];
+const REQ_EXCEL_COLUMNS_FUNC  = ['code', 'app_soort', 'subcategorie', 'titel', 'omschrijving', 'fase', 'type', 'owner', 'interne_opmerking'];
+const REQ_EXCEL_COLUMNS_OTHER = ['code', 'subcategorie', 'titel', 'omschrijving', 'fase', 'type', 'owner', 'interne_opmerking'];
 
 function _req_excel_cols_for(string $scope): array {
     return $scope === 'FUNC' ? REQ_EXCEL_COLUMNS_FUNC : REQ_EXCEL_COLUMNS_OTHER;
@@ -46,15 +46,17 @@ function requirements_excel_export(int $trajectId, string $filename): void {
     if (!$traject) { http_response_code(404); exit('Traject niet gevonden.'); }
 
     $reqs = db_all(
-        'SELECT r.code, r.title, r.description, r.type,
+        'SELECT r.code, r.title, r.description, r.type, r.fase, r.internal_note,
                 s.name AS sub_name,
                 a.name AS app_name,
+                td.name AS owner_name,
                 c.code AS cat_code, c.sort_order AS cat_order,
                 s.sort_order AS sub_order, r.sort_order AS req_order
            FROM requirements r
            JOIN subcategorieen s ON s.id = r.subcategorie_id
            JOIN categorieen    c ON c.id = s.categorie_id
-           LEFT JOIN applicatiesoorten a ON a.id = s.applicatiesoort_id
+           LEFT JOIN applicatiesoorten   a  ON a.id  = s.applicatiesoort_id
+           LEFT JOIN traject_deelnemers  td ON td.id = r.owner_deelnemer_id
           WHERE r.traject_id = :t
           ORDER BY c.sort_order, a.name, s.sort_order, r.sort_order, r.id',
         [':t' => $trajectId]
@@ -88,12 +90,15 @@ function requirements_excel_template(int $trajectId, string $filename): void {
         [''],
         ['Eén tabblad per scope. Vul de kolommen in zoals aangegeven; tabbladnamen, kolomvolgorde en kolomnamen niet wijzigen.'],
         [''],
-        ['code          — leeg laten voor een NIEUW requirement; ingevuld = update op bestaande code in dit traject.'],
-        ['app_soort     — alleen FUNC: naam van de App soort waaronder de subcategorie hangt.'],
-        ['subcategorie  — naam exact zoals in dit traject (FUNC: app service onder de gekozen App soort).'],
-        ['titel         — verplicht.'],
-        ['omschrijving  — optioneel.'],
-        ['type          — eis | wens | ko'],
+        ['code              — leeg laten voor een NIEUW requirement; ingevuld = update op bestaande code in dit traject.'],
+        ['app_soort         — alleen FUNC: naam van de App soort waaronder de subcategorie hangt.'],
+        ['subcategorie      — naam exact zoals in dit traject (FUNC: app service onder de gekozen App soort).'],
+        ['titel             — verplicht.'],
+        ['omschrijving      — optioneel.'],
+        ['fase              — optioneel; integer 1..5.'],
+        ['type              — eis | wens | ko'],
+        ['owner             — optioneel; naam van een deelnemer van dit traject (exact zoals onder Collega\'s).'],
+        ['interne_opmerking — optioneel; niet zichtbaar voor leveranciers.'],
         [''],
         ['Beschikbare subcategorieën in dit traject (per scope):'],
     ], null, 'A1');
@@ -138,12 +143,15 @@ function _req_excel_build_sheet(
     ]);
 
     $widths = [
-        'code'          => 12,
-        'app_soort'     => 26,
-        'subcategorie'  => 28,
-        'titel'         => 36,
-        'omschrijving'  => 60,
-        'type'          => 10,
+        'code'              => 12,
+        'app_soort'         => 26,
+        'subcategorie'      => 28,
+        'titel'             => 36,
+        'omschrijving'      => 60,
+        'fase'              => 8,
+        'type'              => 10,
+        'owner'             => 22,
+        'interne_opmerking' => 40,
     ];
     foreach ($cols as $i => $name) {
         $sheet->getColumnDimensionByColumn($i + 1)->setWidth($widths[$name] ?? 20);
@@ -156,12 +164,15 @@ function _req_excel_build_sheet(
         $vals = [];
         foreach ($cols as $name) {
             switch ($name) {
-                case 'code':         $vals[] = (string)$r['code']; break;
-                case 'app_soort':    $vals[] = (string)($r['app_name'] ?? ''); break;
-                case 'subcategorie': $vals[] = (string)$r['sub_name']; break;
-                case 'titel':        $vals[] = (string)$r['title']; break;
-                case 'omschrijving': $vals[] = (string)($r['description'] ?? ''); break;
-                case 'type':         $vals[] = $moscow[$r['type']] ?? $r['type']; break;
+                case 'code':              $vals[] = (string)$r['code']; break;
+                case 'app_soort':         $vals[] = (string)($r['app_name'] ?? ''); break;
+                case 'subcategorie':      $vals[] = (string)$r['sub_name']; break;
+                case 'titel':             $vals[] = (string)$r['title']; break;
+                case 'omschrijving':      $vals[] = (string)($r['description'] ?? ''); break;
+                case 'fase':              $vals[] = $r['fase'] !== null ? (string)(int)$r['fase'] : ''; break;
+                case 'type':              $vals[] = $moscow[$r['type']] ?? $r['type']; break;
+                case 'owner':             $vals[] = (string)($r['owner_name'] ?? ''); break;
+                case 'interne_opmerking': $vals[] = (string)($r['internal_note'] ?? ''); break;
             }
         }
         foreach ($vals as $i => $v) {
@@ -255,6 +266,14 @@ function requirements_excel_import(int $trajectId, string $path): array {
     $existingByCode = [];
     foreach ($codeRows as $r) $existingByCode[mb_strtoupper($r['code'])] = (int)$r['id'];
 
+    // Deelnemers (voor owner-naam-match)
+    $tdRows = db_all(
+        'SELECT id, name FROM traject_deelnemers WHERE traject_id = :t',
+        [':t' => $trajectId]
+    );
+    $ownerByName = [];
+    foreach ($tdRows as $td) $ownerByName[mb_strtolower(trim((string)$td['name']))] = (int)$td['id'];
+
     // Per scope-tab: header valideren + rijen verzamelen
     $plan = [];
     foreach (REQ_EXCEL_SCOPES as $scope) {
@@ -288,10 +307,33 @@ function requirements_excel_import(int $trajectId, string $path): array {
             $desc  = $assoc['omschrijving'];
             $type  = mb_strtolower($assoc['type']);
             $app   = $assoc['app_soort'] ?? '';
+            $fase  = $assoc['fase'] ?? '';
+            $owner = $assoc['owner'] ?? '';
+            $note  = $assoc['interne_opmerking'] ?? '';
 
             $rowErr = [];
             if ($title === '') $rowErr[] = 'titel leeg';
             if (!in_array($type, REQUIREMENT_TYPES, true)) $rowErr[] = "type '$type' ongeldig";
+
+            // Fase: optioneel, integer 1..5 (REQUIREMENT_FASES)
+            $faseVal = null;
+            if ($fase !== '') {
+                $fi = (int)$fase;
+                if (!in_array($fi, REQUIREMENT_FASES, true)) {
+                    $rowErr[] = "fase '$fase' ongeldig (toegestaan: " . implode(', ', REQUIREMENT_FASES) . ')';
+                } else {
+                    $faseVal = $fi;
+                }
+            }
+
+            // Owner: optioneel, naam moet matchen op een deelnemer van dit traject
+            $ownerId = null;
+            if ($owner !== '') {
+                $ownerId = $ownerByName[mb_strtolower(trim($owner))] ?? null;
+                if ($ownerId === null) {
+                    $rowErr[] = "owner '$owner' is geen deelnemer van dit traject";
+                }
+            }
 
             $subId = null;
             if ($scope === 'FUNC') {
@@ -326,9 +368,18 @@ function requirements_excel_import(int $trajectId, string $path): array {
                 continue;
             }
 
+            $common = [
+                'sub'      => $subId,
+                'title'    => $title,
+                'desc'     => $desc,
+                'type'     => $type,
+                'fase'     => $faseVal,
+                'owner_id' => $ownerId,
+                'note'     => $note !== '' ? $note : null,
+            ];
             $plan[] = $reqId === null
-                ? ['op' => 'create', 'sub' => $subId, 'title' => $title, 'desc' => $desc, 'type' => $type]
-                : ['op' => 'update', 'id' => $reqId, 'sub' => $subId, 'title' => $title, 'desc' => $desc, 'type' => $type];
+                ? ['op' => 'create'] + $common
+                : ['op' => 'update', 'id' => $reqId] + $common;
         }
     }
 
@@ -336,21 +387,20 @@ function requirements_excel_import(int $trajectId, string $path): array {
 
     db_transaction(function () use ($plan, $trajectId, &$result) {
         foreach ($plan as $item) {
+            $data = [
+                'subcategorie_id'    => $item['sub'],
+                'title'              => $item['title'],
+                'description'        => $item['desc'],
+                'type'               => $item['type'],
+                'fase'               => $item['fase'],
+                'owner_deelnemer_id' => $item['owner_id'],
+                'internal_note'      => $item['note'],
+            ];
             if ($item['op'] === 'create') {
-                requirement_create($trajectId, [
-                    'subcategorie_id' => $item['sub'],
-                    'title'           => $item['title'],
-                    'description'     => $item['desc'],
-                    'type'            => $item['type'],
-                ]);
+                requirement_create($trajectId, $data);
                 $result['created']++;
             } else {
-                requirement_update($item['id'], $trajectId, [
-                    'subcategorie_id' => $item['sub'],
-                    'title'           => $item['title'],
-                    'description'     => $item['desc'],
-                    'type'            => $item['type'],
-                ]);
+                requirement_update($item['id'], $trajectId, $data);
                 $result['updated']++;
             }
         }

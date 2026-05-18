@@ -45,6 +45,7 @@ const LEV_EXCEL_I18N = [
             'domein'       => 'Domein',
             'titel'        => 'Titel',
             'omschrijving' => 'Omschrijving',
+            'fase'         => 'Fase',
             'moscow'       => 'MoSCoW',
             'standaard'    => 'Standaard Ja / Nee / Deels',
             'toelichting'  => 'Toelichting',
@@ -108,6 +109,7 @@ const LEV_EXCEL_I18N = [
             'domein'       => 'Domain',
             'titel'        => 'Title',
             'omschrijving' => 'Description',
+            'fase'         => 'Phase',
             'moscow'       => 'MoSCoW',
             'standaard'    => 'Standard Yes / No / Partial',
             'toelichting'  => 'Comments',
@@ -161,7 +163,7 @@ const LEV_EXCEL_I18N = [
 
 /** Kolommen (intern, lower-snake) — volgorde = visuele volgorde. */
 const LEV_EXCEL_COLUMNS = [
-    'nr', 'domein', 'titel', 'omschrijving', 'moscow', 'standaard', 'toelichting',
+    'nr', 'domein', 'titel', 'omschrijving', 'fase', 'moscow', 'standaard', 'toelichting',
 ];
 
 function lev_excel_lang(string $lang): string {
@@ -192,7 +194,7 @@ function leverancier_excel_export(int $leverancierId, string $filename, string $
     $trajectId = (int)$lev['traject_id'];
 
     $reqs = db_all(
-        'SELECT r.id, r.code, r.title, r.description, r.type,
+        'SELECT r.id, r.code, r.title, r.description, r.type, r.fase,
                 s.name AS sub_name,
                 c.name AS cat_name, c.code AS cat_code,
                 c.sort_order AS cat_order, s.sort_order AS sub_order,
@@ -298,11 +300,13 @@ function lev_excel_build_sheet(
     foreach ($cols as $i => $_) {
         $letters[] = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($i + 1);
     }
-    // Linker-blok: nr t/m moscow (kolommen 0..4)
-    $leftFirst  = $letters[0];
-    $leftLast   = $letters[4]; // moscow
+    // Lookup van kolom-code → letter (robuust tegen kolom-volgorde-wijzigingen)
+    $L = array_combine($cols, $letters);
+    // Linker-blok: nr t/m moscow
+    $leftFirst  = $L['nr'];
+    $leftLast   = $L['moscow'];
     // Rechter-blok: standaard + toelichting
-    $rightFirst = $letters[5];
+    $rightFirst = $L['standaard'];
     $rightLast  = end($letters);
 
     // ── Rij 1: banner ──────────────────────────────────────────────────────
@@ -365,10 +369,11 @@ function lev_excel_build_sheet(
         $s->getRowDimension(3)->setRowHeight($subNames ? 48 : 28);
 
         $widths = [
-            $letters[0] => 10, $letters[1] => 22, $letters[2] => 32,
-            $letters[3] => 70, $letters[4] => 12, $letters[5] => 20, $letters[6] => 40,
+            'nr' => 10, 'domein' => 22, 'titel' => 32,
+            'omschrijving' => 70, 'fase' => 8, 'moscow' => 12,
+            'standaard' => 20, 'toelichting' => 40,
         ];
-        foreach ($widths as $col => $w) $s->getColumnDimension($col)->setWidth($w);
+        foreach ($widths as $cc => $w) $s->getColumnDimension($L[$cc])->setWidth($w);
         $s->freezePane('A3');
         return;
     }
@@ -386,20 +391,26 @@ function lev_excel_build_sheet(
         $domein = $req['cat_name'] . ' → ' . $req['sub_name'];
 
         $values = [
-            $req['code'],
-            $domein,
-            $req['title'],
-            $req['description'],
-            lev_excel_moscow_label((string)$req['type'], $lang),
-            $std,
-            $ans['answer_text'] ?? '',
+            'nr'           => $req['code'],
+            'domein'       => $domein,
+            'titel'        => $req['title'],
+            'omschrijving' => $req['description'],
+            'fase'         => $req['fase'] ?? '',
+            'moscow'       => lev_excel_moscow_label((string)$req['type'], $lang),
+            'standaard'    => $std,
+            'toelichting'  => $ans['answer_text'] ?? '',
         ];
-        foreach ($values as $i => $v) {
-            $s->setCellValueExplicit(
-                $letters[$i] . $rowNr,
-                (string)($v ?? ''),
-                \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
-            );
+        foreach ($values as $code => $v) {
+            // Fase als integer als hij gevuld is, anders leeg.
+            if ($code === 'fase' && $v !== '' && $v !== null) {
+                $s->setCellValue($L[$code] . $rowNr, (int)$v);
+            } else {
+                $s->setCellValueExplicit(
+                    $L[$code] . $rowNr,
+                    (string)($v ?? ''),
+                    \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING
+                );
+            }
         }
         $rowNr++;
     }
@@ -424,17 +435,15 @@ function lev_excel_build_sheet(
         $s->getStyle($rightFirst . '3:' . $rightLast . $lastRow)->applyFromArray([
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => $greenLt]],
         ]);
-        // MoSCoW en Nr gecentreerd
-        $s->getStyle($letters[0] . '3:' . $letters[0] . $lastRow)
-            ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $s->getStyle($letters[4] . '3:' . $letters[4] . $lastRow)
-            ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $s->getStyle($letters[5] . '3:' . $letters[5] . $lastRow)
-            ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        // MoSCoW, Nr, Fase en Standaard gecentreerd
+        foreach (['nr', 'fase', 'moscow', 'standaard'] as $cc) {
+            $s->getStyle($L[$cc] . '3:' . $L[$cc] . $lastRow)
+                ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        }
 
-        // Data-validatie op "Standaard Ja / Nee"
+        // Data-validatie op "Standaard Ja / Nee / Deels"
         for ($r = 3; $r <= $lastRow; $r++) {
-            $dv = $s->getCell($letters[5] . $r)->getDataValidation();
+            $dv = $s->getCell($L['standaard'] . $r)->getDataValidation();
             $dv->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
             $dv->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_STOP);
             $dv->setAllowBlank(true);
@@ -452,16 +461,12 @@ function lev_excel_build_sheet(
     // Kolombreedtes (PhpSpreadsheet ondersteunt autoSize, maar vaste maten
     // ogen strakker omdat titel/omschrijving vaak lang zijn)
     $widths = [
-        $letters[0] => 10,   // nr
-        $letters[1] => 22,   // domein
-        $letters[2] => 32,   // titel
-        $letters[3] => 70,   // omschrijving
-        $letters[4] => 12,   // moscow
-        $letters[5] => 20,   // standaard
-        $letters[6] => 40,   // toelichting
+        'nr' => 10, 'domein' => 22, 'titel' => 32,
+        'omschrijving' => 70, 'fase' => 8, 'moscow' => 12,
+        'standaard' => 20, 'toelichting' => 40,
     ];
-    foreach ($widths as $col => $w) {
-        $s->getColumnDimension($col)->setWidth($w);
+    foreach ($widths as $cc => $w) {
+        $s->getColumnDimension($L[$cc])->setWidth($w);
     }
 
     // Freeze headers

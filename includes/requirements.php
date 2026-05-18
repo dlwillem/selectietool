@@ -48,6 +48,34 @@ function requirement_type_label(string $t): string {
     ][$t] ?? $t;
 }
 
+/**
+ * Initialen voor avatar-bolletje: eerste letter voornaam + eerste letter
+ * laatste-woord (bv. "Willem Janssen" → "WJ", "Anne van Dijk" → "AD").
+ * Lege of single-letter input → "?".
+ */
+function owner_initials(?string $name): string {
+    $name = trim((string)$name);
+    if ($name === '') return '?';
+    $parts = preg_split('/\s+/u', $name) ?: [];
+    if (count($parts) === 1) return mb_strtoupper(mb_substr($parts[0], 0, 2));
+    $first = mb_substr(reset($parts), 0, 1);
+    $last  = mb_substr(end($parts),   0, 1);
+    return mb_strtoupper($first . $last);
+}
+
+/**
+ * Stabiele pastelkleur op basis van naam-hash. Geeft hex-strings terug
+ * voor background én tekstkleur (donker, leesbaar).
+ */
+function owner_avatar_colors(string $name): array {
+    $h = crc32(mb_strtolower($name)) % 360;
+    if ($h < 0) $h += 360;
+    return [
+        'bg'   => "hsl($h, 65%, 82%)",  // pastel
+        'fg'   => "hsl($h, 45%, 28%)",  // donkere variant van dezelfde hue
+    ];
+}
+
 function requirement_type_badge(string $t): string {
     $map = [
         'eis'  => ['indigo', 'Must'],
@@ -93,6 +121,31 @@ function requirement_subcat_allowed(int $subId, int $trajectId): bool {
     return (int)$row['traject_id'] === $trajectId;
 }
 
+/**
+ * Owner-deelnemer-validatie: NULL of bestaande deelnemer-id van dit traject.
+ * Onbekende of cross-traject id's worden afgewezen als NULL.
+ */
+function requirement_owner_validate($value, int $trajectId): ?int {
+    if ($value === null || $value === '' || (int)$value === 0) return null;
+    $id = (int)$value;
+    $ok = (int)db_value(
+        'SELECT COUNT(*) FROM traject_deelnemers WHERE id = :i AND traject_id = :t',
+        [':i' => $id, ':t' => $trajectId]
+    );
+    return $ok ? $id : null;
+}
+
+/**
+ * Fase-validatie: NULL of integer in REQUIREMENT_FASES.
+ */
+const REQUIREMENT_FASES = [1, 2, 3, 4, 5];
+
+function requirement_fase_validate($value): ?int {
+    if ($value === null || $value === '' || (int)$value === 0) return null;
+    $i = (int)$value;
+    return in_array($i, REQUIREMENT_FASES, true) ? $i : null;
+}
+
 function requirement_create(int $trajectId, array $data): int {
     if (!requirement_subcat_allowed((int)$data['subcategorie_id'], $trajectId)) {
         throw new RuntimeException('Ongeldige subcategorie voor dit traject.');
@@ -109,15 +162,18 @@ function requirement_create(int $trajectId, array $data): int {
     );
 
     $id = db_insert('requirements', [
-        'traject_id'      => $trajectId,
-        'subcategorie_id' => (int)$data['subcategorie_id'],
-        'code'            => $code,
-        'title'           => (string)$data['title'],
-        'description'     => !empty($data['description']) ? (string)$data['description'] : null,
-        'type'            => (string)$data['type'],
-        'sort_order'      => $maxOrder + 10,
-        'created_at'      => date('Y-m-d H:i:s'),
-        'updated_at'      => date('Y-m-d H:i:s'),
+        'traject_id'         => $trajectId,
+        'subcategorie_id'    => (int)$data['subcategorie_id'],
+        'code'               => $code,
+        'title'              => (string)$data['title'],
+        'description'        => !empty($data['description']) ? (string)$data['description'] : null,
+        'type'               => (string)$data['type'],
+        'owner_deelnemer_id' => requirement_owner_validate($data['owner_deelnemer_id'] ?? null, $trajectId),
+        'internal_note'      => !empty($data['internal_note']) ? (string)$data['internal_note'] : null,
+        'fase'               => requirement_fase_validate($data['fase'] ?? null),
+        'sort_order'         => $maxOrder + 10,
+        'created_at'         => date('Y-m-d H:i:s'),
+        'updated_at'         => date('Y-m-d H:i:s'),
     ]);
     audit_log('requirement_created', 'requirement', $id, $code . ' — ' . $data['title']);
     return $id;
@@ -138,10 +194,20 @@ function requirement_update(int $id, int $trajectId, array $data): void {
         throw new RuntimeException('Ongeldig type.');
     }
 
-    $allowed = ['subcategorie_id','title','description','type'];
+    $allowed = ['subcategorie_id','title','description','type',
+                'owner_deelnemer_id','internal_note','fase'];
     $filtered = array_intersect_key($data, array_flip($allowed));
     if (isset($filtered['description']) && $filtered['description'] === '') {
         $filtered['description'] = null;
+    }
+    if (isset($filtered['internal_note']) && $filtered['internal_note'] === '') {
+        $filtered['internal_note'] = null;
+    }
+    if (array_key_exists('owner_deelnemer_id', $filtered)) {
+        $filtered['owner_deelnemer_id'] = requirement_owner_validate($filtered['owner_deelnemer_id'], $trajectId);
+    }
+    if (array_key_exists('fase', $filtered)) {
+        $filtered['fase'] = requirement_fase_validate($filtered['fase']);
     }
     if (!$filtered) return;
     $filtered['updated_at'] = date('Y-m-d H:i:s');
@@ -181,11 +247,13 @@ function requirement_subcats_for_traject(int $trajectId): array {
  */
 function requirements_list(int $trajectId, array $filters = []): array {
     $sql = 'SELECT r.*, s.name AS sub_name, c.code AS cat_code, c.name AS cat_name,
-                   a.name AS app_name, a.description AS app_description
+                   a.name AS app_name, a.description AS app_description,
+                   td.name AS owner_name, td.email AS owner_email
               FROM requirements r
               JOIN subcategorieen s ON s.id = r.subcategorie_id
               JOIN categorieen    c ON c.id = s.categorie_id
-              LEFT JOIN applicatiesoorten a ON a.id = s.applicatiesoort_id
+              LEFT JOIN applicatiesoorten   a  ON a.id  = s.applicatiesoort_id
+              LEFT JOIN traject_deelnemers  td ON td.id = r.owner_deelnemer_id
              WHERE r.traject_id = :t';
     $params = [':t' => $trajectId];
 
@@ -202,11 +270,14 @@ function requirements_list(int $trajectId, array $filters = []): array {
         $params[':cc'] = $filters['cat_code'];
     }
     if (!empty($filters['q'])) {
-        $sql .= ' AND (r.code LIKE :q1 OR r.title LIKE :q2 OR r.description LIKE :q3)';
+        $sql .= ' AND (r.code LIKE :q1 OR r.title LIKE :q2 OR r.description LIKE :q3
+                       OR r.internal_note LIKE :q4 OR td.name LIKE :q5)';
         $like = '%' . $filters['q'] . '%';
         $params[':q1'] = $like;
         $params[':q2'] = $like;
         $params[':q3'] = $like;
+        $params[':q4'] = $like;
+        $params[':q5'] = $like;
     }
 
     $sql .= ' ORDER BY c.sort_order, s.sort_order, r.sort_order, r.id';

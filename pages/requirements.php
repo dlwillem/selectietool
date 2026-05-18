@@ -293,6 +293,22 @@ $bodyRenderer = function () use (
                 <?php endif; ?>
               </div>
               <div class="req-row-meta" data-no-rowlink>
+                <?php if (!empty($r['internal_note'])): ?>
+                  <span class="req-note-ind" title="<?= h((string)$r['internal_note']) ?>">
+                    <?= icon('file-text', 13) ?>
+                  </span>
+                <?php endif; ?>
+                <?php if (!empty($r['owner_name'])):
+                  $ac = owner_avatar_colors((string)$r['owner_name']); ?>
+                  <span class="req-owner-avatar"
+                        title="<?= h((string)$r['owner_name']) ?>"
+                        style="background:<?= h($ac['bg']) ?>;color:<?= h($ac['fg']) ?>;">
+                    <?= h(owner_initials((string)$r['owner_name'])) ?>
+                  </span>
+                <?php endif; ?>
+                <?php if (!empty($r['fase'])): ?>
+                  <span class="req-fase-pill" title="Fase <?= (int)$r['fase'] ?>">F<?= (int)$r['fase'] ?></span>
+                <?php endif; ?>
                 <span class="req-moscow<?= $isKO ? ' ko' : '' ?>"><?= h($mLabel) ?></span>
                 <code class="req-code" title="<?= h($r['code']) ?>"><?= h($r['code']) ?></code>
                 <?php if ($canEdit): ?>
@@ -419,6 +435,25 @@ $bodyRenderer = function () use (
     .req-code {
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
       font-size:10.5px; color:#d1d5db; font-weight:600;
+    }
+
+    .req-owner-avatar {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:24px; height:24px; border-radius:50%;
+      font-size:10px; font-weight:700; letter-spacing:0.2px;
+      flex:none; cursor:default; user-select:none;
+    }
+    .req-note-ind {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:22px; height:22px; border-radius:6px;
+      color:#6b7280; background:#f3f4f6; cursor:help;
+    }
+    .req-note-ind:hover { background:#e5e7eb; color:#374151; }
+    .req-fase-pill {
+      display:inline-flex; align-items:center; justify-content:center;
+      min-width:22px; height:20px; padding:0 6px;
+      border-radius:10px; background:#eef2ff; color:#4338ca;
+      font-size:10.5px; font-weight:700; letter-spacing:0.3px;
     }
 
     .req-del { margin:0; display:inline-flex; }

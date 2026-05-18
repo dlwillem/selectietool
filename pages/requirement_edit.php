@@ -5,6 +5,7 @@
 require_once __DIR__ . '/../includes/bootstrap.php';
 require_once __DIR__ . '/../includes/trajecten.php';
 require_once __DIR__ . '/../includes/requirements.php';
+require_once __DIR__ . '/../includes/traject_deelnemers.php';
 require_login();
 
 $id = input_int('id');
@@ -35,10 +36,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if ($action === 'update') {
             requirement_update($id, $trajectId, [
-                'title'           => input_str('title'),
-                'description'     => input_str('description'),
-                'type'            => input_str('type'),
-                'subcategorie_id' => input_int('subcategorie_id'),
+                'title'              => input_str('title'),
+                'description'        => input_str('description'),
+                'type'               => input_str('type'),
+                'subcategorie_id'    => input_int('subcategorie_id'),
+                'owner_deelnemer_id' => input_int('owner_deelnemer_id') ?: null,
+                'internal_note'      => input_str('internal_note'),
+                'fase'               => input_int('fase') ?: null,
             ]);
             flash_set('success', 'Requirement bijgewerkt.');
         } elseif ($action === 'delete') {
@@ -59,10 +63,12 @@ foreach ($subcats as $s) {
     $subsGrouped[$s['cat_code']]['subs'][] = $s;
 }
 
+$deelnemers = traject_deelnemers_list($trajectId);
+
 $pageTitle  = $req['code'] . ' — ' . $req['title'];
 $currentNav = 'requirements';
 
-$bodyRenderer = function () use ($req, $traject, $subsGrouped, $canEdit) { ?>
+$bodyRenderer = function () use ($req, $traject, $subsGrouped, $canEdit, $deelnemers) { ?>
   <div class="page-header">
     <div>
       <div class="row-sm" style="align-items:center;margin-bottom:4px;">
@@ -125,6 +131,36 @@ $bodyRenderer = function () use ($req, $traject, $subsGrouped, $canEdit) { ?>
           </select>
         </label>
       </div>
+
+      <div class="field-row">
+        <label class="field">Owner <span class="muted small">(optioneel)</span>
+          <select name="owner_deelnemer_id" class="input" <?= $canEdit ? '' : 'disabled' ?>>
+            <option value="">— Geen —</option>
+            <?php foreach ($deelnemers as $d): ?>
+              <option value="<?= (int)$d['id'] ?>"
+                      <?= (int)$d['id'] === (int)$req['owner_deelnemer_id'] ? 'selected' : '' ?>>
+                <?= h($d['name']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+        <label class="field">Fase <span class="muted small">(optioneel)</span>
+          <select name="fase" class="input" <?= $canEdit ? '' : 'disabled' ?>>
+            <option value="">—</option>
+            <?php foreach (REQUIREMENT_FASES as $f): ?>
+              <option value="<?= (int)$f ?>" <?= (int)$f === (int)$req['fase'] ? 'selected' : '' ?>>
+                <?= (int)$f ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+      </div>
+
+      <label class="field">Interne opmerking <span class="muted small">(niet zichtbaar voor leveranciers)</span>
+        <textarea name="internal_note" rows="3" maxlength="2000"
+                  <?= $canEdit ? '' : 'readonly' ?>><?= h((string)$req['internal_note']) ?></textarea>
+      </label>
+
       <?php if ($canEdit): ?>
         <button type="submit" class="btn"><?= icon('check', 14) ?> Opslaan</button>
       <?php endif; ?>
