@@ -231,7 +231,7 @@ $users = users_list();
 $pageTitle  = 'Instellingen';
 $currentNav = 'instellingen';
 
-$bodyRenderer = function () use ($users, $tab) { ?>
+$bodyRenderer = function () use ($users, $tab, $visibleTabs) { ?>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;600;700;800&display=swap');
   .repo-screen { --pri:#0891b2;--pri-h:#0e7490;--grn:#10b981;--txt:#0d2d3a;--muted:#6b7280;--border:#e2e6ea;--bg:#f4f6f8;--card:#ffffff;--r:12px;--r-sm:6px;--sh:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);--sh-h:0 6px 20px rgba(0,0,0,.1),0 16px 40px rgba(0,0,0,.07);font-family:'Nunito Sans',system-ui,sans-serif;color:var(--txt); }
