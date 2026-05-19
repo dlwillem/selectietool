@@ -193,18 +193,18 @@ function traject_deelnemer_invite_to_round(int $rondeId, int $tdId, string $name
     $ronde = db_one('SELECT leverancier_id FROM scoring_rondes WHERE id = :r', [':r' => $rondeId]);
     if (!$ronde) throw new RuntimeException('Ronde niet gevonden.');
 
-    $token = deelnemer_generate_token();
+    $tok = deelnemer_generate_token();
     $id = db_insert('scoring_deelnemers', [
         'ronde_id'             => $rondeId,
         'leverancier_id'       => (int)$ronde['leverancier_id'],
         'traject_deelnemer_id' => $tdId,
         'name'                 => $name,
         'email'                => $email,
-        'token'                => $token,
+        'token'                => $tok['hash'],
         'token_expires'        => date('Y-m-d H:i:s', time() + SCORE_TOKEN_TTL_DAYS * 86400),
         'invited_at'           => date('Y-m-d H:i:s'),
     ]);
-    deelnemer_send_invite_mail($id);
+    deelnemer_send_invite_mail($id, $tok['plain']);
     audit_log('deelnemer_invited', 'scoring_deelnemer', $id, $name . ' <' . $email . '>');
     return $id;
 }
